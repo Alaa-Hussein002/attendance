@@ -45,6 +45,7 @@ npm run web                                  # الطرفية 2: الويب عل
 مشروع مستقل (ليس ضمن workspaces لاختلاف إصدار React):
 ```bash
 cd apps/mobile && cp .env.example .env   # ضع عنوان الـ API على شبكتك (ليس localhost على الجوال)
-npm install && npm start                 # ثم افتحه بتطبيق Expo Go
+npm install && npm start                 # ثم افتحه بتطبيق Expo Go (SDK 57 — يطابق نسخة المتجر)
+npm run tunnel                           # بديل إن لم يتصل الجوال عبر الشبكة المحلية
 ```
 قرار: لا يوجد حضور دون اتصال، لأن وقت السيرفر هو المرجع؛ تسجيل مؤجَّل سيُحتسب بوقت الرفع وليس وقت الحضور الفعلي.

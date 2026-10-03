@@ -5,6 +5,7 @@ import { hashPassword } from '../src/auth/crypto';
 
 const prisma = new PrismaClient();
 async function main() {
+  if (await prisma.company.findUnique({ where: { slug: 'demo' } })) { console.log('Demo data already exists, skipping.'); return; }
   const company = await prisma.company.create({ data: { name: 'Demo Co', slug: 'demo' } });
   const branch = await prisma.branch.create({ data: { companyId: company.id, name: 'Main',
     latitude: 21.5433, longitude: 39.1728, radiusMeters: 150, allowedIpRanges: [], verificationModes: ['GPS', 'NETWORK'] } });

@@ -8,7 +8,7 @@
     "prisma:generate": "prisma generate",
     "test": "vitest run",
     "seed": "ts-node prisma/seed.ts",
-    "setup": "prisma generate && prisma migrate dev --name init && ts-node prisma/seed.ts"
+    "setup": "prisma generate && prisma migrate dev --name init"
   },
   "dependencies": {
     "@attendance/shared": "*",
