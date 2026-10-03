@@ -1,0 +1,6 @@
+{ "expo": { "name": "الحضور", "slug": "attendance", "version": "0.1.0", "orientation": "portrait", "userInterfaceStyle": "automatic",
+  "ios": { "supportsTablet": false, "bundleIdentifier": "com.example.attendance", "infoPlist": {
+    "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لحظة تسجيل الحضور فقط للتأكد من وجودك في مقر العمل.",
+    "NSFaceIDUsageDescription": "لحماية دخولك إلى التطبيق." } },
+  "android": { "package": "com.example.attendance", "permissions": ["ACCESS_FINE_LOCATION", "USE_BIOMETRIC"] },
+  "plugins": ["expo-secure-store", ["expo-location", { "locationWhenInUsePermission": "نستخدم موقعك لحظة تسجيل الحضور فقط." }]] } }

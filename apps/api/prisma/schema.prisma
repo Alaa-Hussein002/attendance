@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  BRANCH_MANAGER
+  HR
+  EMPLOYEE
+}
+
+enum CheckInSource {
+  GPS
+  NETWORK
+  FINGERPRINT
+  MANUAL
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique // company code used at login
+  timezone  String   @default("Asia/Riyadh")
+  createdAt DateTime @default(now())
+  branches  Branch[]
+  users     User[]
+  policies  AttendancePolicy[]
+  leaveTypes LeaveType[]
+  holidays  Holiday[]
+}
+
+model Branch {
+  id               String   @id @default(uuid())
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id])
+  name             String
+  latitude         Decimal? @db.Decimal(9, 6)
+  longitude        Decimal? @db.Decimal(9, 6)
+  radiusMeters     Int?
+  allowedIpRanges  String[] // CIDR list
+  verificationModes CheckInSource[] // enabled modes per branch
+  users            User[]
+  policyId         String?
+  policy           AttendancePolicy? @relation(fields: [policyId], references: [id])
+  @@index([companyId])
+}
+
+model User {
+  id         String   @id @default(uuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  branchId   String?
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+  role       Role
+  name       String
+  email      String
+  passwordHash String
+  phone      String?
+  failedLogins Int     @default(0)
+  lockedUntil  DateTime?
+  baseSalary Decimal  @default(0) @db.Decimal(12, 2)
+  policyId   String?   // per-employee override (highest precedence)
+  policy     AttendancePolicy? @relation(fields: [policyId], references: [id])
+  active     Boolean  @default(true)
+  devices    Device[]
+  records    AttendanceRecord[]
+  leaves     LeaveRequest[]
+  otpChallenges OtpChallenge[]
+  excuses    Excuse[]
+  refreshTokens RefreshToken[]
+  summaries  MonthlySummary[]
+  @@unique([companyId, email])
+}
+
+// Device binding: one active device per employee
+model Device {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  deviceUid  String
+  label      String?
+  active     Boolean  @default(true)
+  boundAt    DateTime @default(now())
+  @@unique([userId, deviceUid])
+}
+
+model AttendanceRecord {
+  id         String        @id @default(uuid())
+  companyId  String
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  localDate  String        // YYYY-MM-DD in company timezone
+  checkInAt  DateTime      // SERVER time (authoritative)
+  clientTime DateTime?     // anomaly flagging only
+  source     CheckInSource
+  status     String        // tier key from the policy (dynamic), e.g. GREEN/RED/BLACK
+  ip         String?
+  deviceUid  String?
+  latitude   Decimal?      @db.Decimal(9, 6)
+  longitude  Decimal?      @db.Decimal(9, 6)
+  flags      String[]      // MOCK_LOCATION, CLOCK_SKEW, ...
+  @@unique([userId, localDate]) // idempotent: one per day
+  @@index([companyId, localDate])
+}
+
+model Holiday {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  date      String
+  name      String
+  @@unique([companyId, date])
+}
+
+model LeaveRequest {
+  id        String      @id @default(uuid())
+  companyId String
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  fromDate  String
+  toDate    String
+  reason    String?
+  status    LeaveStatus @default(PENDING)
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model MonthlySummary {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  year      Int
+  month     Int
+  policyId  String?
+  policyConfig Json  // exact policy used (history stays correct after HR edits)
+  snapshot  Json     // full engine output; recomputable from raw records
+  computedAt DateTime @default(now())
+  @@unique([userId, year, month])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  companyId String
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  reason    String?
+  at        DateTime @default(now())
+  @@index([companyId, at])
+}
+
+// HR-managed, versioned. `config` = AttendancePolicy JSON from packages/shared (validated by validatePolicy()).
+// Resolution order: User.policyId > Branch.policyId > the company policy with isDefault=true.
+// Editing never mutates a row: create a new version (effectiveFrom) so past months stay reproducible.
+model AttendancePolicy {
+  id            String   @id @default(uuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  name          String
+  version       Int      @default(1)
+  config        Json
+  effectiveFrom String   // YYYY-MM-DD
+  isDefault     Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdById   String
+  createdAt     DateTime @default(now())
+  branches      Branch[]
+  users         User[]
+  @@index([companyId, isDefault])
+}
+
+model LeaveType {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  name      String
+  paid      Boolean @default(true)
+  requiresApproval Boolean @default(true)
+  active    Boolean @default(true)
+}
+
+model OtpChallenge {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  deviceUid  String
+  purpose    String   // FIRST_LOGIN | DEVICE_CHANGE
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  tokenHash  String   @unique
+  deviceUid  String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  @@index([userId])
+}
+
+// HR-approved excuse for a RED/BLACK day (neutralizes it in the points engine). Reason is mandatory.
+model Excuse {
+  id          String   @id @default(uuid())
+  companyId   String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  localDate   String
+  reason      String
+  createdById String
+  createdAt   DateTime @default(now())
+  @@unique([userId, localDate])
+}

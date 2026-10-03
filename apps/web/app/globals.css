@@ -1,0 +1,23 @@
+:root { --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0; --brand:#2563eb; --bad:#dc2626; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --line:#334155; --brand:#60a5fa; --bad:#f87171; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+h1 { font-size:22px; } h2 { font-size:16px; margin:0 0 12px; }
+label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+input, select { width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:transparent; color:inherit; font:inherit; }
+input[type=color] { padding:2px; height:38px; } input[type=checkbox] { width:auto; }
+.row { display:grid; gap:8px; align-items:end; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin-bottom:10px; }
+.scroll { overflow-x:auto; }
+button { padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:transparent; color:inherit; cursor:pointer; font:inherit; }
+button.primary { background:var(--brand); color:#fff; border-color:var(--brand); } button:disabled { opacity:.5; cursor:not-allowed; }
+.errors { border:1px solid var(--bad); color:var(--bad); border-radius:8px; padding:10px 14px; margin-bottom:12px; }
+.hint { color:var(--muted); font-size:13px; } .chip { display:inline-block; width:12px; height:12px; border-radius:50%; margin-inline-end:6px; }
+.bar { position:sticky; bottom:0; background:var(--bg); padding:12px 0; display:flex; gap:12px; align-items:center; }
+.days { display:flex; gap:12px; flex-wrap:wrap; }
+nav { display:flex; gap:16px; padding:0 0 16px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap; }
+nav a { color:var(--muted); text-decoration:none; } nav a.on { color:var(--brand); font-weight:600; } nav button { margin-inline-start:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; } th, td { text-align:start; padding:8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+td input, td select { min-width:90px; } .num { font-variant-numeric: tabular-nums; } .neg { color:var(--bad); }
+.dots { display:flex; gap:3px; flex-wrap:wrap; } .dots i { width:10px; height:10px; border-radius:50%; display:inline-block; }
