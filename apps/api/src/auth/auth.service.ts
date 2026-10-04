@@ -61,7 +61,7 @@ export class AuthService {
       if (r.countAttempt) await this.prisma.otpChallenge.update({ where: { id: ch.id }, data: { attempts: { increment: 1 } } });
       throw new UnauthorizedException(r.reason);
     }
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       await tx.otpChallenge.update({ where: { id: ch.id }, data: { consumedAt: new Date() } });
       const old = await tx.device.findMany({ where: { userId: ch.userId, active: true } });
       await tx.device.updateMany({ where: { userId: ch.userId, active: true }, data: { active: false } });
@@ -69,7 +69,7 @@ export class AuthService {
         create: { userId: ch.userId, deviceUid: dto.deviceUid }, update: { active: true, boundAt: new Date() } });
       await tx.refreshToken.updateMany({ where: { userId: ch.userId, revokedAt: null }, data: { revokedAt: new Date() } }); // sign out the old device
       await tx.auditLog.create({ data: { companyId: ch.user.companyId, actorId: ch.userId, action: 'DEVICE_BOUND',
-        entity: 'Device', entityId: dto.deviceUid, before: old.map((d) => d.deviceUid) as any, after: [dto.deviceUid] as any, reason: ch.purpose } });
+        entity: 'Device', entityId: dto.deviceUid, before: old.map((d: any) => d.deviceUid) as any, after: [dto.deviceUid] as any, reason: ch.purpose } });
     });
     return this.issueTokens(ch.user, dto.deviceUid);
   }

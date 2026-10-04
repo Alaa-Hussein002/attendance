@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ApiError, getDeviceUid, request, saveSession } from './api';
+import { API_URL, ApiError, getDeviceUid, request, saveSession } from './api';
 import { msg } from './messages';
 import { s } from './styles';
 
@@ -32,5 +32,6 @@ export default function Login({ onDone }: { onDone: () => void }) {
     <TextInput style={s.input} autoCapitalize="none" value={f[k]} onChangeText={(v) => setF({ ...f, [k]: v })} {...extra} /></View>);
   return (<View style={s.screen}><Text style={s.h1}>تسجيل الدخول</Text>{!!err && <Text style={s.err}>{err}</Text>}
     {field('companyCode', 'رمز الشركة')}{field('email', 'البريد الإلكتروني', { keyboardType: 'email-address' })}{field('password', 'كلمة المرور', { secureTextEntry: true })}
-    <TouchableOpacity style={s.btn} disabled={busy} onPress={login}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnT}>دخول</Text>}</TouchableOpacity></View>);
+    <TouchableOpacity style={s.btn} disabled={busy} onPress={login}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnT}>دخول</Text>}</TouchableOpacity>
+    <Text style={s.hint}>الخادم: {API_URL}</Text></View>);
 }

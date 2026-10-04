@@ -18,7 +18,7 @@ export class PoliciesService {
 
   async create(companyId: string, userId: string, name: string, config: AttendancePolicy, effectiveFrom: string, isDefault: boolean) {
     this.assertValid(config);
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       if (isDefault) await tx.attendancePolicy.updateMany({ where: { companyId, isDefault: true }, data: { isDefault: false } });
       const row = await tx.attendancePolicy.create({ data: { companyId, name, config: config as any, effectiveFrom, isDefault, createdById: userId } });
       await tx.auditLog.create({ data: { companyId, actorId: userId, action: 'POLICY_CREATE', entity: 'AttendancePolicy', entityId: row.id, after: config as any } });
@@ -31,7 +31,7 @@ export class PoliciesService {
     this.assertValid(config);
     const old = await this.prisma.attendancePolicy.findFirst({ where: { id, companyId } });
     if (!old) throw new NotFoundException('POLICY_NOT_FOUND');
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       await tx.attendancePolicy.update({ where: { id }, data: { active: false, isDefault: false } });
       const row = await tx.attendancePolicy.create({ data: {
         companyId, name: old.name, version: old.version + 1, config: config as any, effectiveFrom,

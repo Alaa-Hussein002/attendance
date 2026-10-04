@@ -49,3 +49,11 @@ npm install && npm start                 # ثم افتحه بتطبيق Expo Go 
 npm run tunnel                           # بديل إن لم يتصل الجوال عبر الشبكة المحلية
 ```
 قرار: لا يوجد حضور دون اتصال، لأن وقت السيرفر هو المرجع؛ تسجيل مؤجَّل سيُحتسب بوقت الرفع وليس وقت الحضور الفعلي.
+
+## إذا حذفت node_modules أو ظهرت أخطاء في المحرر
+مجلدات `node_modules` تُعاد بأمر واحد ولا تُحفظ في Git:
+```bash
+npm install                      # في الجذر (الـ API والويب والحزمة المشتركة)
+cd apps/mobile && npm install    # الجوال مشروع مستقل
+```
+ثم في VS Code: `Ctrl+Shift+P` ← `TypeScript: Restart TS Server`.

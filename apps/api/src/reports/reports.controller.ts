@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Header, Injectable, NotFoundException, Post, Query, Res } from '@nestjs/common';
-import { AttendancePolicy, calculateMonth, monthBounds, toLocalParts, MonthResult, prevDay } from '@attendance/shared';
+import { AttendancePolicy, calculateMonth, expandDateRange, monthBounds, toLocalParts, MonthResult } from '@attendance/shared';
 import { Auth, AuthCtx, requireRole } from '../common/auth-context';
 import { check, HR_ROLES } from '../common/http';
 import { toMinor } from '../common/money';
@@ -35,7 +35,6 @@ export class ReportsService {
     const policyRows = policyIds.length ? await this.prisma.attendancePolicy.findMany({ where: { companyId, id: { in: policyIds } } }) : [];
     const byId = new Map(policyRows.map((p: any) => [p.id, p.config as AttendancePolicy]));
     const now = toLocalParts(new Date(), company.timezone);
-    const { expandDateRange } = await import('@attendance/shared');
 
     const out: Computed[] = [];
     for (const u of users as any[]) {
