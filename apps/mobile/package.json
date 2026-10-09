@@ -5,23 +5,29 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "tunnel": "expo start --tunnel",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "typecheck": "tsc --noEmit"
+    "tunnel": "expo start --tunnel -c",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "lan": "expo start --lan -c",
+    "net-check": "node scripts/net-check.js"
   },
   "dependencies": {
-    "expo": "^57.0.0",
+    "@expo/vector-icons": "^15.0.2",
+    "expo": "^57.0.27",
     "expo-crypto": "~57.0.3",
+    "expo-haptics": "~57.0.3",
     "expo-local-authentication": "~57.0.3",
     "expo-location": "~57.0.20",
     "expo-secure-store": "~57.0.4",
+    "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.0",
-    "typescript": "~5.9.2"
+    "typescript": "~6.0.3"
   }
 }

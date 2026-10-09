@@ -1,0 +1,25 @@
+const AR: Record<string, string> = {
+  INVALID_CREDENTIALS: 'البريد الإلكتروني أو كلمة المرور غير صحيحة', ACCOUNT_LOCKED: 'تم إيقاف الدخول مؤقتاً بعد محاولات خاطئة. حاول بعد 15 دقيقة',
+  OTP_RATE_LIMIT: 'طلبتَ رموزاً كثيرة. حاول مرة أخرى بعد ساعة', INVALID_CODE: 'الرمز غير صحيح', EXPIRED: 'انتهت صلاحية الرمز، اطلب رمزاً جديداً',
+  CONSUMED: 'هذا الرمز استُخدم من قبل', TOO_MANY_ATTEMPTS: 'محاولات خاطئة كثيرة، اطلب رمزاً جديداً', INVALID_CHALLENGE: 'انتهت جلسة التحقق، ابدأ من جديد',
+  EMAIL_SEND_FAILED: 'تعذر إرسال البريد. تأكد من إعدادات البريد في الخادم ثم أعد المحاولة', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول لاحقاً',
+  SETUP_ALREADY_DONE: 'تمت تهيئة النظام مسبقاً. سجّل الدخول', INVALID_SETUP_KEY: 'مفتاح التهيئة غير صحيح', COMPANY_NAME_REQUIRED: 'اسم المنشأة مطلوب', NAME_REQUIRED: 'الاسم مطلوب',
+  INVALID_EMAIL: 'البريد الإلكتروني غير صالح', INVALID_TIMEZONE: 'المنطقة الزمنية غير صالحة', COMPANY_CODE_REQUIRED: 'رمز الشركة مطلوب', DEVICE_REQUIRED: 'هذا الحساب يسجّل الدخول من تطبيق الجوال',
+  INVALID_CHANGE_TOKEN: 'انتهت مهلة تغيير كلمة المرور، سجّل الدخول من جديد', PASSWORD_TOO_SHORT: 'كلمة المرور يجب ألا تقل عن 8 خانات', PASSWORD_TOO_LONG: 'كلمة المرور طويلة جداً',
+  PASSWORD_IS_DEFAULT: 'اختر كلمة مرور غير الكلمة الافتراضية', PASSWORD_NEEDS_LETTER_AND_DIGIT: 'كلمة المرور تحتاج حرفاً ورقماً على الأقل', PASSWORD_TOO_SIMPLE: 'كلمة المرور بسيطة جداً',
+  AUTH_REQUIRED: 'سجّل الدخول للمتابعة', INVALID_TOKEN: 'انتهت الجلسة، سجّل الدخول من جديد', FORBIDDEN_ROLE: 'ليست لديك صلاحية لهذا الإجراء', ROLE_NOT_ALLOWED: 'لا تملك صلاحية تعيين هذا الدور',
+  EMAIL_EXISTS: 'هذا البريد مسجّل لموظف آخر', BRANCH_NOT_FOUND: 'الفرع غير موجود', POLICY_NOT_FOUND: 'السياسة غير موجودة', EMPLOYEE_NOT_FOUND: 'الموظف غير موجود', REASON_REQUIRED: 'السبب مطلوب (3 أحرف على الأقل)',
+  CANNOT_DEACTIVATE_SELF: 'لا يمكنك تعطيل حسابك بنفسك', INVALID_SALARY: 'قيمة الراتب غير صالحة', INVALID_DATE: 'التاريخ غير صالح', INVALID_TIME: 'الوقت غير صالح', INVALID_MONTH: 'الشهر غير صالح',
+  HOLIDAY_EXISTS: 'هذه العطلة مسجّلة مسبقاً', REQUEST_EXISTS: 'قدّمت طلباً لهذا اليوم مسبقاً', ALREADY_DECIDED: 'تم البتّ في هذا الطلب مسبقاً', LEAVE_OVERLAP: 'يتداخل مع إجازة أخرى',
+  DATE_IN_FUTURE: 'لا يمكن اختيار تاريخ مستقبلي', DATE_TOO_OLD: 'لا يمكن تقديم عذر لأكثر من 31 يوماً مضت', INVALID_RANGE: 'نطاق التواريخ غير صالح',
+  INVALID_LATITUDE: 'الموقع غير صالح', INVALID_LONGITUDE: 'الموقع غير صالح', INVALID_RADIUS: 'نطاق الفرع يجب أن يكون بين 10 و5000 متر', GPS_NEEDS_LOCATION: 'حدد موقع الفرع على الخريطة',
+  NETWORK_NEEDS_IP_RANGE: 'أضف نطاق شبكة المكتب', INVALID_IP_RANGE: 'نطاق الشبكة غير صالح', INVALID_MODES: 'اختر طريقة تحقق واحدة على الأقل', INVALID_HOST: 'عنوان الجهاز غير صالح', INVALID_PORT: 'المنفذ غير صالح',
+  DEVICE_NOT_FOUND: 'الجهاز غير موجود', INVALID_POLICY: 'إعدادات الحضور غير صالحة، راجع الحقول المظللة', NETWORK_ERROR: 'تعذر الاتصال بالخادم. تأكد أنه يعمل ثم أعد المحاولة',
+  PERIOD_NOT_FINISHED: 'لا يمكن إقفال الفترة قبل انتهائها', MONTH_NOT_FINISHED: 'لا يمكن إقفال الفترة قبل انتهائها',
+  TITLE_REQUIRED: 'عنوان المهمة مطلوب', INVALID_LOCATION: 'حدد موقع المهمة على الخريطة', END_BEFORE_START: 'وقت النهاية يجب أن يكون بعد وقت البداية', ASSIGNEES_REQUIRED: 'اختر موظفاً واحداً على الأقل', ASSIGNEE_NOT_FOUND: 'أحد الموظفين المختارين غير متاح',
+  TASK_NOT_FOUND: 'المهمة غير موجودة', TASK_NOT_EDITABLE: 'لا يمكن تعديل مهمة ملغاة', INVALID_TEMPLATE_NAME: 'اسم القالب: حروف إنجليزية صغيرة وأرقام و _ فقط', INVALID_PHONE_NUMBER_ID: 'معرّف رقم واتساب غير صالح', INVALID_PHONE: 'رقم الجوال غير صالح',
+  WHATSAPP_NEEDS_PHONE_NUMBER_ID: 'أدخل معرّف رقم واتساب', WHATSAPP_NEEDS_TOKEN: 'أدخل رمز الوصول', WHATSAPP_NEEDS_TEMPLATE: 'أدخل اسم قالب واحد على الأقل', INVALID_DEVICE_KEY: 'مفتاح الجهاز غير صحيح',
+  NOT_TRACKED: 'هذا الحساب لا يسجّل حضوراً',
+};
+export class ApiError extends Error { constructor(public code: string, public status: number, public data?: any) { super(code); } }
+export const errText = (e: unknown) => (e instanceof ApiError ? AR[e.code] ?? 'حدث خطأ غير متوقع. حاول مرة أخرى' : 'حدث خطأ غير متوقع. حاول مرة أخرى');

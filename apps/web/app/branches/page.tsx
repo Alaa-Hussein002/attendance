@@ -1,39 +1,46 @@
 'use client';
-import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useState } from 'react';
+import { useToast } from '../../components/Providers';
+import { Field, PageHeader, Switch } from '../../components/ui';
 import { api } from '../../lib/api';
+import { errText } from '../../lib/errors';
 
-const MODES: [string, string][] = [['GPS', 'الموقع (GPS)'], ['NETWORK', 'شبكة المكتب'], ['FINGERPRINT', 'جهاز البصمة']];
-const empty = { id: '', name: '', latitude: '', longitude: '', radiusMeters: '150', ranges: '', modes: ['GPS'] as string[] };
+const MapPicker = dynamic(() => import('../../components/MapPicker'), { ssr: false, loading: () => <div className="map" /> });
+const MODES: [string, string, string][] = [['GPS', 'الموقع (GPS)', 'يسجّل الحضور من داخل نطاق الفرع على الخريطة'], ['NETWORK', 'شبكة المكتب', 'يسجّل الحضور من داخل شبكة الواي فاي الخاصة بالمقر'], ['FINGERPRINT', 'جهاز البصمة', 'يُعتمد على جهاز البصمة في الفرع']];
+const blank = { id: '', name: '', loc: null as null | { lat: number; lng: number }, radius: 150, ranges: '', modes: ['GPS'] as string[] };
 
 export default function Branches() {
-  const [rows, setRows] = useState<any[]>([]); const [f, setF] = useState(empty); const [err, setErr] = useState('');
-  const load = () => api<any[]>('/branches').then(setRows).catch((e) => setErr(e.message));
-  useEffect(() => { load(); }, []);
-  const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
-
+  const toast = useToast();
+  const [rows, setRows] = useState<any[]>([]); const [f, setF] = useState(blank); const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false);
+  const load = useCallback(() => api<any[]>('/branches').then(setRows).catch((e) => toast.error('تعذر التحميل', errText(e))), [toast]);
+  useEffect(() => { load(); }, [load]);
+  const edit = (b: any) => { setF({ id: b.id, name: b.name, loc: b.latitude != null ? { lat: Number(b.latitude), lng: Number(b.longitude) } : null, radius: b.radiusMeters ?? 150, ranges: (b.allowedIpRanges ?? []).join('\n'), modes: b.verificationModes }); setOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const needLoc = f.modes.includes('GPS') && !f.loc;
   async function save() {
-    setErr('');
-    const body = { name: f.name, latitude: num(f.latitude), longitude: num(f.longitude), radiusMeters: num(f.radiusMeters),
-      allowedIpRanges: f.ranges.split(/[\s,]+/).filter(Boolean), verificationModes: f.modes };
-    try { await api(f.id ? `/branches/${f.id}` : '/branches', { method: f.id ? 'PUT' : 'POST', body }); setF(empty); load(); }
-    catch (e: any) { setErr(e.message); }
+    setBusy(true);
+    try {
+      await api(f.id ? `/branches/${f.id}` : '/branches', { method: f.id ? 'PUT' : 'POST', body: { name: f.name, latitude: f.loc?.lat, longitude: f.loc?.lng, radiusMeters: f.loc ? f.radius : undefined, allowedIpRanges: f.ranges.split(/[\s,]+/).filter(Boolean), verificationModes: f.modes } });
+      toast.success(f.id ? 'تم تحديث الفرع' : 'تمت إضافة الفرع'); setF(blank); setOpen(false); load();
+    } catch (e) { toast.error('تعذر الحفظ', errText(e)); }
+    setBusy(false);
   }
-  const edit = (b: any) => setF({ id: b.id, name: b.name, latitude: b.latitude ?? '', longitude: b.longitude ?? '', radiusMeters: String(b.radiusMeters ?? ''),
-    ranges: (b.allowedIpRanges ?? []).join(', '), modes: b.verificationModes });
-  const inp = (k: 'name' | 'latitude' | 'longitude' | 'radiusMeters' | 'ranges', label: string) =>
-    <div><label>{label}</label><input value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></div>;
-
   return (<>
-    <h1>الفروع</h1>{err && <div className="errors">{err}</div>}
-    <div className="card"><h2>{f.id ? 'تعديل فرع' : 'فرع جديد'}</h2>
-      <div className="row">{inp('name', 'الاسم')}{inp('latitude', 'خط العرض')}{inp('longitude', 'خط الطول')}{inp('radiusMeters', 'نصف القطر (متر)')}</div>
-      <div className="row">{inp('ranges', 'نطاقات شبكة المكتب (مثل 203.0.113.0/24، مفصولة بفاصلة)')}</div>
-      <label>طرق التحقق المفعّلة</label>
-      <div className="days">{MODES.map(([k, t]) => <label key={k} style={{ display: 'flex', gap: 6, alignItems: 'center', color: 'inherit' }}>
-        <input type="checkbox" checked={f.modes.includes(k)} onChange={(e) => setF({ ...f, modes: e.target.checked ? [...f.modes, k] : f.modes.filter((m) => m !== k) })} />{t}</label>)}</div>
-      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button className="primary" onClick={save}>حفظ</button>{f.id && <button onClick={() => setF(empty)}>إلغاء</button>}</div>
-    </div>
-    <div className="card scroll"><table><thead><tr><th>الفرع</th><th>طرق التحقق</th><th>الموقع</th><th /></tr></thead><tbody>
-      {rows.map((b) => <tr key={b.id}><td>{b.name}</td><td>{b.verificationModes.join('، ')}</td><td className="num">{b.latitude ? `${b.latitude}, ${b.longitude} (${b.radiusMeters}م)` : '—'}</td><td><button onClick={() => edit(b)}>تعديل</button></td></tr>)}
-    </tbody></table></div></>);
+    <PageHeader title="الفروع" sub="حدّد موقع كل فرع على الخريطة وطريقة التحقق من الحضور." right={!open && <button className="btn primary" onClick={() => { setF(blank); setOpen(true); }}>+ فرع جديد</button>} />
+    {open && (<div className="card"><h2>{f.id ? 'تعديل الفرع' : 'فرع جديد'}</h2>
+      <div className="stack" style={{ marginTop: 14 }}>
+        <Field label="اسم الفرع"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="مثال: المقر الرئيسي — جدة" /></Field>
+        <div><div className="lbl">طرق التحقق من الحضور</div><div className="stack">{MODES.map(([k, t, d]) => (
+          <div key={k} className="row" style={{ padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 14 }}><Switch checked={f.modes.includes(k)} onChange={(v) => setF({ ...f, modes: v ? [...f.modes, k] : f.modes.filter((m) => m !== k) })} /><div><b>{t}</b><div className="muted small">{d}</div></div></div>))}</div></div>
+        {f.modes.includes('GPS') && (<div><div className="lbl">موقع الفرع</div><MapPicker value={f.loc} radius={f.radius} onChange={(loc) => setF((s) => ({ ...s, loc }))} />
+          <div className="grid" style={{ marginTop: 14 }}><Field label={`نطاق الحضور حول الفرع: ${f.radius} متراً`}><input type="range" min={30} max={1000} step={10} value={f.radius} onChange={(e) => setF({ ...f, radius: Number(e.target.value) })} style={{ padding: 0 }} /></Field></div>
+          {needLoc && <div className="alert warn">حدّد موقع الفرع على الخريطة لتفعيل الحضور بالموقع.</div>}</div>)}
+        {f.modes.includes('NETWORK') && <Field label="نطاقات شبكة المكتب" help="اكتب كل نطاق في سطر. مثال: 192.168.0.0/16"><textarea rows={3} dir="ltr" value={f.ranges} onChange={(e) => setF({ ...f, ranges: e.target.value })} /></Field>}
+        <div className="row"><button className="btn primary" disabled={busy || !f.name.trim() || !f.modes.length || needLoc} onClick={save}>{f.id ? 'حفظ التعديل' : 'إضافة الفرع'}</button><button className="btn" onClick={() => { setOpen(false); setF(blank); }}>إلغاء</button></div>
+      </div></div>)}
+    <div className="card scroll">{!rows.length ? <div className="empty">لم تُضف فروعاً بعد. أضف أول فرع لتفعيل تسجيل الحضور.</div> : (
+      <table><thead><tr><th>الفرع</th><th>طرق التحقق</th><th>الموقع</th><th /></tr></thead><tbody>{rows.map((b) => (
+        <tr key={b.id}><td><b>{b.name}</b></td><td><div className="row" style={{ gap: 6 }}>{b.verificationModes.map((m: string) => <span key={m} className="badge">{MODES.find((x) => x[0] === m)?.[1] ?? m}</span>)}</div></td>
+          <td>{b.latitude != null ? <span className="badge">📍 محدد · نطاق {b.radiusMeters} م</span> : <span className="muted">—</span>}</td><td style={{ textAlign: 'end' }}><button className="btn sm" onClick={() => edit(b)}>تعديل</button></td></tr>))}</tbody></table>)}</div>
+  </>);
 }

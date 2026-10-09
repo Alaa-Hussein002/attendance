@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Injectable, NotFoundException, Param, Post, Query } from '@nestjs/common';
 import { Auth, AuthCtx, requireRole } from '../common/auth-context';
-import { check, DATE_RE, HR_ROLES } from '../common/http';
+import { ADMIN_ONLY, check, DATE_RE } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
@@ -31,6 +31,6 @@ export class HolidaysService {
 export class HolidaysController {
   constructor(private svc: HolidaysService) {}
   @Get() list(@Auth() a: AuthCtx, @Query('year') year?: string) { return this.svc.list(a.companyId, year); }
-  @Post() create(@Auth() a: AuthCtx, @Body() b: { date: string; name: string }) { requireRole(a, ...HR_ROLES); return this.svc.create(a, b.date, b.name); }
-  @Delete(':id') remove(@Auth() a: AuthCtx, @Param('id') id: string) { requireRole(a, ...HR_ROLES); return this.svc.remove(a, id); }
+  @Post() create(@Auth() a: AuthCtx, @Body() b: { date: string; name: string }) { requireRole(a, ...ADMIN_ONLY); return this.svc.create(a, b.date, b.name); }
+  @Delete(':id') remove(@Auth() a: AuthCtx, @Param('id') id: string) { requireRole(a, ...ADMIN_ONLY); return this.svc.remove(a, id); }
 }

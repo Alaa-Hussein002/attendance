@@ -44,3 +44,29 @@ export function localToUtc(date: string, hhmm: string, timeZone = 'Asia/Riyadh')
   }
   return new Date(guess);
 }
+
+/**
+ * Payroll period of a "month". startDay=1 => the calendar month.
+ * startDay=25 => from the 25th of the PREVIOUS month to the 24th of this month
+ * (the period is named after the month in which it ends).
+ */
+export function periodBounds(year: number, month: number, startDay = 1) {
+  if (startDay <= 1) return monthBounds(year, month);
+  const py = month === 1 ? year - 1 : year;
+  const pm = month === 1 ? 12 : month - 1;
+  return { from: `${py}-${pad2(pm)}-${pad2(startDay)}`, to: `${year}-${pad2(month)}-${pad2(startDay - 1)}` };
+}
+/** The payroll month (year, month) that a calendar date belongs to, for a given start day. */
+export function periodOf(date: string, startDay = 1) {
+  let [y, m, d] = date.split('-').map(Number);
+  if (startDay > 1 && d >= startDay) { m += 1; if (m === 13) { m = 1; y += 1; } }
+  return { year: y, month: m };
+}
+
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const DAYS_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+/** "الثلاثاء 6 أكتوبر" — Gregorian, Latin digits. */
+export const fmtDayAr = (iso: string) => `${DAYS_AR[new Date(`${iso}T12:00:00Z`).getUTCDay()]} ${Number(iso.slice(8))} ${MONTHS_AR[Number(iso.slice(5, 7)) - 1]}`;
+/** minutes since midnight or "HH:mm" -> "2:30 م" */
+export function fmtTime12Ar(v: number | string) { const m = typeof v === 'number' ? v : hhmmToMinutes(v); const h = Math.floor(m / 60); return `${((h + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'ص' : 'م'}`; }
+export const nextDay = (date: string) => new Date(new Date(`${date}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);

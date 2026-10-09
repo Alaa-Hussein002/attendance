@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { AttendancePolicy, BranchConfig, decideCheckIn, hhmmToMinutes, localToUtc, toLocalParts } from '@attendance/shared';
+import { AttendancePolicy, BranchConfig, decideCheckIn, hhmmToMinutes, localToUtc, nextDay, normalizePolicy, TaskSite, toLocalParts } from '@attendance/shared';
 import { AuthCtx } from '../common/auth-context';
 import { check, DATE_RE } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
@@ -11,30 +11,39 @@ export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
   /** Resolution order: employee override > branch > company default. */
-  private async resolvePolicy(companyId: string, user: { policyId: string | null; branch: { policyId: string | null } | null }) {
+  async resolvePolicy(companyId: string, user: { policyId: string | null; branch: { policyId: string | null } | null }) {
     const id = user.policyId ?? user.branch?.policyId;
     const row = id
       ? await this.prisma.attendancePolicy.findFirst({ where: { id, companyId } })
       : await this.prisma.attendancePolicy.findFirst({ where: { companyId, isDefault: true, active: true } });
     if (!row) throw new NotFoundException('POLICY_NOT_CONFIGURED');
-    return row.config as unknown as AttendancePolicy;
+    return normalizePolicy(row.config);
+  }
+
+  /** Today's scheduled tasks of this employee, as geofenced places where checking in counts as attendance. */
+  private async todaySites(companyId: string, userId: string, tz: string): Promise<TaskSite[]> {
+    const date = toLocalParts(new Date(), tz).date;
+    const rows = await this.prisma.task.findMany({ where: { companyId, status: 'SCHEDULED', startsAt: { gte: localToUtc(date, '00:00', tz), lt: localToUtc(nextDay(date), '00:00', tz) }, assignees: { some: { userId } } } });
+    return rows.map((t: any) => ({ id: t.id, lat: Number(t.latitude), lng: Number(t.longitude), radiusMeters: t.radiusMeters, startMinutes: toLocalParts(t.startsAt, tz).minutes, endMinutes: toLocalParts(t.endsAt, tz).minutes }));
   }
 
   async checkIn(companyId: string, userId: string, ip: string | undefined, dto: CheckInDto) {
     const user = await this.prisma.user.findFirst({ where: { id: userId, companyId, active: true },
       include: { branch: true, devices: { where: { active: true } }, company: true } });
-    if (!user || !user.branch) throw new ForbiddenException('NO_BRANCH');
+    if (!user || !user.tracksAttendance) throw new ForbiddenException('NOT_TRACKED');
     const b = user.branch;
-    const branch: BranchConfig = {
+    const taskSites = await this.todaySites(companyId, userId, user.company.timezone);
+    if (!b && !taskSites.length) throw new ForbiddenException('NO_BRANCH');
+    const branch: BranchConfig = b ? {
       latitude: b.latitude ? Number(b.latitude) : undefined, longitude: b.longitude ? Number(b.longitude) : undefined,
       radiusMeters: b.radiusMeters ?? undefined, allowedIpRanges: b.allowedIpRanges, modes: b.verificationModes as any,
-    };
+    } : { allowedIpRanges: [], modes: [] };
     const policy = await this.resolvePolicy(companyId, user);
     const serverTime = new Date(); // authoritative
     const d = decideCheckIn(branch, policy, {
       serverTime, clientTime: dto.clientTime ? new Date(dto.clientTime) : undefined, ip,
       lat: dto.lat, lng: dto.lng, mockLocation: dto.mockLocation,
-      deviceUid: dto.deviceUid, boundDeviceUid: user.devices[0]?.deviceUid ?? null,
+      deviceUid: dto.deviceUid, boundDeviceUid: user.devices[0]?.deviceUid ?? null, taskSites,
     }, user.company.timezone);
 
     const existing = await this.prisma.attendanceRecord.findUnique({ where: { userId_localDate: { userId, localDate: d.localDate } } });
@@ -43,7 +52,7 @@ export class AttendanceService {
 
     return this.prisma.attendanceRecord.create({ data: {
       companyId, userId, localDate: d.localDate, checkInAt: serverTime,
-      clientTime: dto.clientTime ? new Date(dto.clientTime) : null, source: d.source!, status: d.status!,
+      clientTime: dto.clientTime ? new Date(dto.clientTime) : null, source: d.source! as any, status: d.status!, taskId: d.taskId ?? null,
       ip, deviceUid: dto.deviceUid, latitude: dto.lat, longitude: dto.lng, flags: d.flags } });
   }
 

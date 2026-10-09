@@ -13,6 +13,8 @@ enum Role {
   BRANCH_MANAGER
   HR
   EMPLOYEE
+  PHOTOGRAPHER
+  TEAM_LEAD
 }
 
 enum CheckInSource {
@@ -20,6 +22,13 @@ enum CheckInSource {
   NETWORK
   FINGERPRINT
   MANUAL
+  TASK
+}
+
+enum TaskStatus {
+  SCHEDULED
+  DONE
+  CANCELLED
 }
 
 enum LeaveStatus {
@@ -37,6 +46,7 @@ model Company {
   branches  Branch[]
   users     User[]
   policies  AttendancePolicy[]
+  biometricDevices BiometricDevice[]
   leaveTypes LeaveType[]
   holidays  Holiday[]
 }
@@ -52,6 +62,7 @@ model Branch {
   allowedIpRanges  String[] // CIDR list
   verificationModes CheckInSource[] // enabled modes per branch
   users            User[]
+  biometricDevices BiometricDevice[]
   policyId         String?
   policy           AttendancePolicy? @relation(fields: [policyId], references: [id])
   @@index([companyId])
@@ -68,6 +79,10 @@ model User {
   email      String
   passwordHash String
   phone      String?
+  emailVerifiedAt DateTime?
+  mustChangePassword Boolean @default(false)
+  tracksAttendance   Boolean @default(true)
+  biometricId        String?   // user id enrolled on the fingerprint device
   failedLogins Int     @default(0)
   lockedUntil  DateTime?
   baseSalary Decimal  @default(0) @db.Decimal(12, 2)
@@ -79,6 +94,8 @@ model User {
   leaves     LeaveRequest[]
   otpChallenges OtpChallenge[]
   excuses    Excuse[]
+  excuseRequests ExcuseRequest[]
+  taskAssignments TaskAssignee[]
   refreshTokens RefreshToken[]
   summaries  MonthlySummary[]
   @@unique([companyId, email])
@@ -108,6 +125,7 @@ model AttendanceRecord {
   status     String        // tier key from the policy (dynamic), e.g. GREEN/RED/BLACK
   ip         String?
   deviceUid  String?
+  taskId     String?       // set when the check-in happened at a task location
   latitude   Decimal?      @db.Decimal(9, 6)
   longitude  Decimal?      @db.Decimal(9, 6)
   flags      String[]      // MOCK_LOCATION, CLOCK_SKEW, ...
@@ -233,4 +251,122 @@ model Excuse {
   createdById String
   createdAt   DateTime @default(now())
   @@unique([userId, localDate])
+}
+
+// An employee asks HR to excuse a late/absent day. Approval creates an Excuse.
+model ExcuseRequest {
+  id          String      @id @default(uuid())
+  companyId   String
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  localDate   String
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  decidedById String?
+  decidedAt   DateTime?
+  decisionNote String?
+  createdAt   DateTime    @default(now())
+  @@index([companyId, status])
+  @@index([userId, localDate])
+}
+
+// Fingerprint / iris terminal (e.g. ZKTeco). A local agent will read it; this is its configuration.
+model BiometricDevice {
+  id           String    @id @default(uuid())
+  companyId    String
+  company      Company   @relation(fields: [companyId], references: [id])
+  branchId     String
+  branch       Branch    @relation(fields: [branchId], references: [id])
+  name         String
+  brand        String    @default("ZKTECO")
+  model        String?
+  host         String
+  port         Int       @default(4370)
+  serialNumber String?
+  active       Boolean   @default(true)
+  lastSeenAt   DateTime?
+  lastSyncAt   DateTime?
+  notes        String?
+  apiKeyHash   String?   @unique // the agent authenticates with a per-device key (only its hash is stored)
+  clockOffsetMs Int?     // device clock minus server clock, reported by the agent
+  createdAt    DateTime  @default(now())
+  punches      PunchLog[]
+  @@index([companyId, branchId])
+}
+
+// A booking: a photographer (or several) is sent to a place at a time. Checking in at that place counts as attendance.
+model Task {
+  id           String       @id @default(uuid())
+  companyId    String
+  title        String
+  details      String?
+  latitude     Decimal      @db.Decimal(9, 6)
+  longitude    Decimal      @db.Decimal(9, 6)
+  radiusMeters Int          @default(150)
+  address      String?
+  startsAt     DateTime
+  endsAt       DateTime
+  status       TaskStatus   @default(SCHEDULED)
+  createdById  String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  assignees    TaskAssignee[]
+  @@index([companyId, startsAt])
+}
+
+model TaskAssignee {
+  id      String @id @default(uuid())
+  taskId  String
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+// One row per message we tried to send (email / whatsapp); the unique key makes reminders idempotent.
+model NotificationLog {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  kind      String   // ASSIGNED | UPDATED | CANCELLED | DAILY | REMINDER
+  refKey    String   // task id, or the local date for the daily digest
+  channel   String   // EMAIL | WHATSAPP
+  status    String   // PENDING | SENT | FAILED
+  error     String?
+  createdAt DateTime @default(now())
+  @@unique([userId, kind, refKey, channel])
+  @@index([companyId, createdAt])
+}
+
+// WhatsApp Business (Meta Cloud API) settings, managed by the admin. The token is stored encrypted.
+model WhatsappConfig {
+  id               String   @id @default(uuid())
+  companyId        String   @unique
+  enabled          Boolean  @default(false)
+  phoneNumberId    String?
+  businessAccountId String?
+  accessTokenEnc   String?
+  templateDaily    String?
+  templateReminder String?
+  templateAssigned String?
+  language         String   @default("ar")
+  updatedAt        DateTime @updatedAt
+}
+
+// Every punch received from a fingerprint terminal, with what we did with it.
+model PunchLog {
+  id            String          @id @default(uuid())
+  companyId     String
+  deviceId      String
+  device        BiometricDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  biometricId   String
+  punchedAtLocal String         // wall-clock "YYYY-MM-DDTHH:mm:ss" in the company timezone
+  localDate     String
+  userId        String?
+  result        String          // RECORDED | IMPROVED | DUPLICATE_DAY | UNMAPPED | NOT_TRACKED | TOO_LATE | NO_POLICY
+  status        String?
+  createdAt     DateTime        @default(now())
+  @@unique([deviceId, biometricId, punchedAtLocal])
+  @@index([companyId, localDate])
 }

@@ -3,8 +3,9 @@ import * as Crypto from 'expo-crypto';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 export const API_URL = BASE;
+export const meta = () => raw('/meta', 'GET', undefined, null);
 const REQUEST_TIMEOUT_MS = 12000;
-const K = { access: 'at', refresh: 'rt', device: 'dev' };
+const K = { access: 'at', refresh: 'rt', device: 'dev', user: 'user', bio: 'bio' };
 
 /** Stable per-install id. A reinstall creates a new one, which triggers the OTP device-change flow (by design). */
 export async function getDeviceUid() {
@@ -14,11 +15,17 @@ export async function getDeviceUid() {
 }
 export class ApiError extends Error { constructor(public code: string, public status: number, public body?: any) { super(code); } }
 
-export async function saveSession(r: { accessToken: string; refreshToken: string }) {
+export interface SessionUser { id: string; name: string; role: string }
+export async function saveSession(r: { accessToken: string; refreshToken: string; user?: SessionUser }) {
   await SecureStore.setItemAsync(K.access, r.accessToken); await SecureStore.setItemAsync(K.refresh, r.refreshToken);
+  if (r.user) await SecureStore.setItemAsync(K.user, JSON.stringify(r.user));
 }
+export async function getUser(): Promise<SessionUser | null> { try { return JSON.parse((await SecureStore.getItemAsync(K.user)) ?? 'null'); } catch { return null; } }
+/** Biometric confirmation before check-in / app unlock (on by default). */
+export const getBioPref = async () => (await SecureStore.getItemAsync(K.bio)) !== '0';
+export const setBioPref = (on: boolean) => SecureStore.setItemAsync(K.bio, on ? '1' : '0');
 export const hasSession = async () => !!(await SecureStore.getItemAsync(K.refresh));
-export async function clearSession() { await SecureStore.deleteItemAsync(K.access); await SecureStore.deleteItemAsync(K.refresh); }
+export async function clearSession() { await SecureStore.deleteItemAsync(K.access); await SecureStore.deleteItemAsync(K.refresh); await SecureStore.deleteItemAsync(K.user); }
 
 async function raw(path: string, method: string, body: unknown, token?: string | null) {
   // Without a timeout an unreachable server makes the UI spin forever: fail fast with a clear error instead.
@@ -54,4 +61,10 @@ export async function request<T = any>(path: string, opts: { method?: string; bo
     if (e instanceof ApiError && e.status === 401) { await refresh(); return raw(path, method, body, await SecureStore.getItemAsync(K.access)); }
     throw e;
   }
+}
+
+/** Ends the session on the server too (best effort), so a stolen refresh token stops working. */
+export async function logoutRemote() {
+  const rt = await SecureStore.getItemAsync(K.refresh);
+  if (rt) await raw('/auth/logout', 'POST', { refreshToken: rt }, null).catch(() => {});
 }

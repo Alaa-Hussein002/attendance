@@ -1,0 +1,9 @@
+{
+  "name": "attendance-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runs on the office network: reads a ZKTeco terminal and sends its punches to the attendance server.",
+  "scripts": { "start": "ts-node src/index.ts", "test": "vitest run", "typecheck": "tsc --noEmit" },
+  "dependencies": { "dotenv": "^16.4.5", "node-zklib": "^1.3.0" },
+  "devDependencies": { "@types/node": "^22.0.0", "ts-node": "^10.9.2", "typescript": "~5.9.2", "vitest": "^2.0.0" }
+}

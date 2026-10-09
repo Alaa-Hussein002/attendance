@@ -2,17 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { calculateMonth, DEFAULT_POLICY } from '@attendance/shared';
 import { csvCell, effectiveAsOf, summarize, toCsv } from './payroll';
 
+const P = { ...DEFAULT_POLICY, payrollStartDay: 1 };
+
 describe('payroll', () => {
   it('summarizes: net = base - deductions + bonus', () => {
-    const r = calculateMonth({ year: 2026, month: 3, baseSalary: 300000, policy: DEFAULT_POLICY, asOfDate: '2026-03-01',
+    const r = calculateMonth({ year: 2026, month: 3, baseSalary: 310000, policy: P, asOfDate: '2026-03-01',
       records: [{ date: '2026-03-01', checkInMinutes: 650 }] });
-    const row = summarize('u1', 'Ali', 300000, r);
-    expect(row).toMatchObject({ lateDays: 1, onTimeDays: 0, lateDeductionsMinor: 5000, netSalaryMinor: 295000 });
+    const row = summarize('u1', 'Ali', 310000, r);
+    expect(row).toMatchObject({ lateDays: 1, onTimeDays: 0, lateDeductionsMinor: 5000, netSalaryMinor: 305000 });
   });
   it('perfect month adds bonus', () => {
     const recs = Array.from({ length: 31 }, (_, i) => ({ date: `2026-03-${String(i + 1).padStart(2, '0')}`, checkInMinutes: 595 }));
-    const row = summarize('u1', 'Ali', 300000, calculateMonth({ year: 2026, month: 3, baseSalary: 300000, policy: DEFAULT_POLICY, records: recs }));
-    expect(row.netSalaryMinor).toBe(330000);
+    const row = summarize('u1', 'Ali', 310000, calculateMonth({ year: 2026, month: 3, baseSalary: 310000, policy: P, records: recs }));
+    expect(row.netSalaryMinor).toBe(315000);
   });
 });
 

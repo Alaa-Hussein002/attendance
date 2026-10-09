@@ -1,6 +1,20 @@
-{ "expo": { "name": "الحضور", "slug": "attendance", "version": "0.1.0", "orientation": "portrait", "userInterfaceStyle": "automatic",
-  "ios": { "supportsTablet": false, "bundleIdentifier": "com.example.attendance", "infoPlist": {
-    "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لحظة تسجيل الحضور فقط للتأكد من وجودك في مقر العمل.",
-    "NSFaceIDUsageDescription": "لحماية دخولك إلى التطبيق." } },
-  "android": { "package": "com.example.attendance", "permissions": ["ACCESS_FINE_LOCATION", "USE_BIOMETRIC"] },
-  "plugins": ["expo-secure-store", ["expo-location", { "locationWhenInUsePermission": "نستخدم موقعك لحظة تسجيل الحضور فقط." }]] } }
+{
+  "expo": {
+    "name": "بيت المصور",
+    "slug": "baytalmosawer-attendance",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#F3F1EC",
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.baytalmosawer.attendance", "infoPlist": {
+      "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لحظة تسجيل الحضور فقط للتأكد من وجودك في مقر العمل.",
+      "NSFaceIDUsageDescription": "لتأكيد هويتك عند فتح التطبيق وتسجيل الحضور." } },
+    "android": { "package": "com.baytalmosawer.attendance", "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#F3F1EC" }, "permissions": ["ACCESS_FINE_LOCATION", "USE_BIOMETRIC"] },
+    "plugins": [
+      "expo-secure-store",
+      ["expo-location", { "locationWhenInUsePermission": "نستخدم موقعك لحظة تسجيل الحضور فقط." }],
+      ["expo-splash-screen", { "image": "./assets/splash-icon.png", "backgroundColor": "#F3F1EC", "imageWidth": 220 }]
+    ]
+  }
+}

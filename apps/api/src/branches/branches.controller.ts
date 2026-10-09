@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Injectable, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import { isValidIpRange } from '@attendance/shared';
 import { Auth, AuthCtx, requireRole } from '../common/auth-context';
-import { check, HR_ROLES } from '../common/http';
+import { ADMIN_ONLY, check, HR_ROLES } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 
 interface BranchDto { name: string; latitude?: number; longitude?: number; radiusMeters?: number;
@@ -47,7 +47,7 @@ export class BranchesService {
 @Controller('branches')
 export class BranchesController {
   constructor(private svc: BranchesService) {}
-  @Get() list(@Auth() a: AuthCtx) { requireRole(a, ...HR_ROLES, 'BRANCH_MANAGER'); return this.svc.list(a.companyId); }
-  @Post() create(@Auth() a: AuthCtx, @Body() b: BranchDto) { requireRole(a, ...HR_ROLES); return this.svc.create(a, b); }
-  @Put(':id') update(@Auth() a: AuthCtx, @Param('id') id: string, @Body() b: BranchDto) { requireRole(a, ...HR_ROLES); return this.svc.update(a, id, b); }
+  @Get() list(@Auth() a: AuthCtx) { requireRole(a, ...HR_ROLES, 'BRANCH_MANAGER', 'TEAM_LEAD'); return this.svc.list(a.companyId); }
+  @Post() create(@Auth() a: AuthCtx, @Body() b: BranchDto) { requireRole(a, ...ADMIN_ONLY); return this.svc.create(a, b); }
+  @Put(':id') update(@Auth() a: AuthCtx, @Param('id') id: string, @Body() b: BranchDto) { requireRole(a, ...ADMIN_ONLY); return this.svc.update(a, id, b); }
 }

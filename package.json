@@ -13,5 +13,9 @@
     "api:setup": "npm run setup -w @attendance/api",
     "api": "npm start -w @attendance/api",
     "web": "npm run dev -w @attendance/web"
+  },
+  "dependencies": {
+    "@types/nodemailer": "^8.0.2",
+    "nodemailer": "^10.0.15"
   }
 }
