@@ -35,7 +35,7 @@ export default function Branches() {
         {f.modes.includes('GPS') && (<div><div className="lbl">موقع الفرع</div><MapPicker value={f.loc} radius={f.radius} onChange={(loc) => setF((s) => ({ ...s, loc }))} />
           <div className="grid" style={{ marginTop: 14 }}><Field label={`نطاق الحضور حول الفرع: ${f.radius} متراً`}><input type="range" min={30} max={1000} step={10} value={f.radius} onChange={(e) => setF({ ...f, radius: Number(e.target.value) })} style={{ padding: 0 }} /></Field></div>
           {needLoc && <div className="alert warn">حدّد موقع الفرع على الخريطة لتفعيل الحضور بالموقع.</div>}</div>)}
-        {f.modes.includes('NETWORK') && <Field label="نطاقات شبكة المكتب" help="اكتب كل نطاق في سطر. مثال: 192.168.0.0/16"><textarea rows={3} dir="ltr" value={f.ranges} onChange={(e) => setF({ ...f, ranges: e.target.value })} /></Field>}
+        {f.modes.includes('NETWORK') && <Field label="نطاقات شبكة المكتب" help="أثناء الاتصال بواي فاي الفرع، اعرف عنوان IPv4 العام واكتبه هنا. مثال: 203.0.113.25/32. للنطاق الثابت اطلب CIDR من مسؤول الشبكة. لا تستخدم عناوين 192.168.x.x الداخلية."><textarea rows={3} dir="ltr" value={f.ranges} onChange={(e) => setF({ ...f, ranges: e.target.value })} /></Field>}
         <div className="row"><button className="btn primary" disabled={busy || !f.name.trim() || !f.modes.length || needLoc} onClick={save}>{f.id ? 'حفظ التعديل' : 'إضافة الفرع'}</button><button className="btn" onClick={() => { setOpen(false); setF(blank); }}>إلغاء</button></div>
       </div></div>)}
     <div className="card scroll">{!rows.length ? <div className="empty">لم تُضف فروعاً بعد. أضف أول فرع لتفعيل تسجيل الحضور.</div> : (
