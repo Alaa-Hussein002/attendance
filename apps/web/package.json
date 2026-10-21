@@ -8,6 +8,7 @@
     "start": "next start -p 3001"
   },
   "dependencies": {
+    "@attendance/i18n": "*",
     "@attendance/shared": "*",
     "leaflet": "^1.9.4",
     "next": "^14.2.0",

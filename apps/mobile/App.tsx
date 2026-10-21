@@ -10,10 +10,12 @@ import Auth from './src/Auth';
 import Home, { TabKey } from './src/Home';
 import Records from './src/Records';
 import Tasks from './src/Tasks';
+import ManagedTasks from './src/ManagedTasks';
 import Profile from './src/Profile';
 import Requests from './src/Requests';
 import { brand, C, R } from './src/theme';
 import { Button, T, ToastProvider } from './src/ui';
+import { MobileI18nProvider } from './src/i18n';
 
 I18nManager.allowRTL(true);
 type Screen = 'boot' | 'login' | 'locked' | 'main';
@@ -22,17 +24,19 @@ const TABS: [TabKey, string, IonName, IonName][] = [['home', 'الرئيسية',
 
 function Main({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
   const insets = useSafeAreaInsets(); const [tab, setTab] = useState<TabKey>('home');
+  const teamLead = user.role === 'TEAM_LEAD';
+  const tabs: [TabKey, string, IonName, IonName][] = TABS.map(([key, label, off, on]) => [key, key === 'tasks' && teamLead ? 'المهام والحجوزات' : label, off, on]);
   return (
     <View style={{ flex: 1, backgroundColor: C.paper }}>
       <View style={{ flex: 1 }}>
         {tab === 'home' && <Home name={user.name} userId={user.id} onExpired={onLogout} go={setTab} />}
-        {tab === 'tasks' && <Tasks userId={user.id} />}
+        {tab === 'tasks' && (teamLead ? <ManagedTasks /> : <Tasks userId={user.id} />)}
         {tab === 'records' && <Records />}
         {tab === 'requests' && <Requests />}
         {tab === 'profile' && <Profile user={user} onLogout={onLogout} />}
       </View>
       <View style={{ position: 'absolute', left: 16, right: 16, bottom: Math.max(insets.bottom, 12), flexDirection: 'row-reverse', backgroundColor: C.black, borderRadius: 26, padding: 6, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}>
-        {TABS.map(([k, l, off, on]) => (<Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityLabel={l} style={{ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 20, backgroundColor: tab === k ? '#242427' : 'transparent', gap: 3 }}>
+        {tabs.map(([k, l, off, on]) => (<Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityLabel={l} style={{ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 20, backgroundColor: tab === k ? '#242427' : 'transparent', gap: 3 }}>
           <Ionicons name={tab === k ? on : off} size={22} color={tab === k ? C.accent : '#8d8a80'} /><T style={{ color: tab === k ? C.paper : '#8d8a80', fontSize: 10.5, fontWeight: '700', textAlign: 'center' }}>{l}</T></Pressable>))}
       </View>
     </View>
@@ -65,4 +69,4 @@ function Root() {
     </MetaCtx.Provider>
   );
 }
-export default function App() { return (<SafeAreaProvider><ToastProvider><Root /></ToastProvider></SafeAreaProvider>); }
+export default function App() { return (<SafeAreaProvider><MobileI18nProvider><ToastProvider><Root /></ToastProvider></MobileI18nProvider></SafeAreaProvider>); }

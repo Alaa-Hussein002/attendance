@@ -13,5 +13,5 @@ const M: Record<string, string> = {
 };
 export const msg = (code: string) => M[code] ?? 'حدث خطأ غير متوقع. حاول مرة أخرى';
 export const NEUTRAL: Record<string, { label: string; color: string }> = {
-  HOLIDAY: { label: 'عطلة رسمية', color: '#94a3b8' }, WEEKEND: { label: 'عطلة أسبوعية', color: '#d8d4c9' }, ON_LEAVE: { label: 'إجازة', color: '#6aa0f5' }, EXCUSED: { label: 'معفى بعذر', color: '#a78bfa' }, FUTURE: { label: '—', color: 'transparent' },
+  HOLIDAY: { label: 'عطلة رسمية', color: '#94a3b8' }, WEEKEND: { label: 'عطلة أسبوعية', color: '#d8d4c9' }, ON_LEAVE: { label: 'إجازة', color: '#6aa0f5' }, EXCUSED: { label: 'معفى بعذر', color: '#a78bfa' }, FUTURE: { label: '—', color: 'transparent' }, INACTIVE: { label: 'خارج الخدمة', color: '#e5e2d9' },
 };

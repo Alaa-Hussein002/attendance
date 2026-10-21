@@ -1,23 +1,28 @@
 {
   "name": "attendance-mobile",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "index.ts",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
   "scripts": {
     "start": "expo start",
     "tunnel": "expo start --tunnel -c",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "lan": "expo start --lan -c",
-    "net-check": "node scripts/net-check.js"
+    "lan": "expo start --lan -c"
   },
   "dependencies": {
+    "@attendance/i18n": "file:../../packages/i18n",
     "@expo/vector-icons": "^15.0.2",
     "expo": "^57.0.27",
     "expo-crypto": "~57.0.3",
     "expo-haptics": "~57.0.3",
     "expo-local-authentication": "~57.0.3",
+    "expo-localization": "~57.0.0",
     "expo-location": "~57.0.20",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",

@@ -6,7 +6,7 @@ import { api, download } from '../../lib/api';
 import { ApiError, errText } from '../../lib/errors';
 import { fmtDay, fmtTime12, MONTHS_AR, ROLE_AR, sar } from '../../lib/format';
 
-const NEUTRAL: Record<string, [string, string]> = { HOLIDAY: ['عطلة رسمية', '#94a3b8'], WEEKEND: ['عطلة أسبوعية', '#cfcbc0'], ON_LEAVE: ['إجازة', '#6aa0f5'], EXCUSED: ['معفى بعذر', '#a78bfa'], FUTURE: ['قادم', 'transparent'] };
+const NEUTRAL: Record<string, [string, string]> = { HOLIDAY: ['عطلة رسمية', '#94a3b8'], WEEKEND: ['عطلة أسبوعية', '#cfcbc0'], ON_LEAVE: ['إجازة', '#6aa0f5'], EXCUSED: ['معفى بعذر', '#a78bfa'], FUTURE: ['قادم', 'transparent'], INACTIVE: ['خارج الخدمة', '#e5e2d9'] };
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const tierOf = (c: any, st: string) => [...c.policy.tiers, c.policy.absentTier].find((t: any) => t.key === st);
 const look = (c: any, st: string): [string, string] => { const t = tierOf(c, st); return t ? [t.label, t.color] : NEUTRAL[st] ?? [st, '#999']; };

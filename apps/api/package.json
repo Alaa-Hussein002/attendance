@@ -9,7 +9,13 @@
     "test": "vitest run",
     "seed": "ts-node prisma/seed.ts",
     "setup": "prisma generate && prisma migrate dev --name v3_tasks_devices",
-    "db:reset": "prisma migrate reset --force --skip-seed"
+    "db:reset": "prisma migrate reset --force --skip-seed",
+    "demo:bench": "ts-node scripts/demo-bench.ts",
+    "demo:data": "ts-node scripts/demo-company.ts",
+    "demo:clean": "ts-node scripts/demo-company.ts --clean",
+    "demo:punches": "ts-node scripts/simulate-punches.ts",
+    "license:keygen": "ts-node scripts/license-keygen.ts",
+    "license:issue": "ts-node scripts/license-issue.ts"
   },
   "dependencies": {
     "@attendance/shared": "*",

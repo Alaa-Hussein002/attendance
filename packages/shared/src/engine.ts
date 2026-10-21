@@ -5,7 +5,7 @@
 import { expandDateRange, hhmmToMinutes, periodBounds } from './time';
 
 export type Kind = 'ON_TIME' | 'LATE' | 'ABSENT';
-export type NeutralKind = 'EXCUSED' | 'ON_LEAVE' | 'HOLIDAY' | 'WEEKEND' | 'FUTURE';
+export type NeutralKind = 'EXCUSED' | 'ON_LEAVE' | 'HOLIDAY' | 'WEEKEND' | 'FUTURE' | 'INACTIVE';
 export const MAX_TIERS = 5;
 
 export interface DeductionRule {
@@ -124,6 +124,7 @@ export interface MonthInput {
   records: { date: string; checkInMinutes: number }[];
   holidays?: string[]; leaveDays?: string[]; excusedDays?: string[];
   asOfDate?: string;
+  activeFrom?: string; activeTo?: string;   // employment window: days outside it are INACTIVE (neutral), never absences
 }
 export interface DayResult {
   date: string; status: string; kind: Kind | NeutralKind;
@@ -172,6 +173,7 @@ export function calculateMonth(input: MonthInput): MonthResult {
   for (const date of dates) {
     const neutral = (k: NeutralKind): DayResult => ({ date, status: k, kind: k, redeemed: false, deduction: 0 });
     if (date > asOf) { days.push(neutral('FUTURE')); continue; }
+    if ((input.activeFrom && date < input.activeFrom) || (input.activeTo && date > input.activeTo)) { days.push(neutral('INACTIVE')); continue; }
     if (holidays.has(date)) { days.push(neutral('HOLIDAY')); continue; }
     if (p.weeklyOffDays.includes(dow(date))) { days.push(neutral('WEEKEND')); continue; }
     if (leaves.has(date)) { days.push(neutral('ON_LEAVE')); continue; }

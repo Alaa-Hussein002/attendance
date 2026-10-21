@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build -w @attendance/store",
+  "outputDirectory": "apps/store/.next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}

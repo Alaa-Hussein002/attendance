@@ -5,22 +5,27 @@ import { check, HR_ROLES } from '../common/http';
 import { toMinor } from '../common/money';
 import { PrismaService } from '../common/prisma.service';
 import { effectiveAsOf, PayrollRow, summarize, toCsv } from './payroll';
+import { LicenseService } from '../license/license.service';
 
 interface Computed { userId: string; name: string; role: string; branchId: string | null; result: MonthResult; row: PayrollRow; policy: AttendancePolicy }
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private license: LicenseService) {}
+  assertExport() { return this.license.assertCan('exportPayroll'); }
 
   /** Live computation from raw records; nothing here is trusted from stored summaries. (year, month) = the payroll month. */
   async compute(companyId: string, year: number, month: number, userIds?: string[], branchId?: string): Promise<Computed[]> {
     check(Number.isInteger(year) && year >= 2020 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12, 'INVALID_MONTH');
     const company = await this.prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new NotFoundException('COMPANY_NOT_FOUND');
-    const where: any = { companyId, active: true, tracksAttendance: true, role: { not: 'SUPER_ADMIN' } };
+    const where: any = { companyId, tracksAttendance: true, role: { not: 'SUPER_ADMIN' }, OR: [{ active: true }, { endDate: { not: null } }] }; // leavers still get their final period
     if (userIds) where.id = { in: userIds };
     if (branchId) where.branchId = branchId;
-    const users = await this.prisma.user.findMany({ where, include: { branch: true }, orderBy: { name: 'asc' } });
+    const all = await this.prisma.user.findMany({ where, include: { branch: true }, orderBy: { name: 'asc' } });
+    const startOf = (u: any) => u.startDate ?? toLocalParts(u.createdAt, company.timezone).date;
+    const t = year * 12 + (month - 1) - 1; const lowerBound = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`; // earliest day any payroll period of this month can start
+    const users = all.filter((u: any) => u.active || (u.endDate && u.endDate >= lowerBound));
     if (!users.length) return [];
     const ids = users.map((u: any) => u.id);
 
@@ -46,7 +51,7 @@ export class ReportsService {
     ]);
     const now = toLocalParts(new Date(), company.timezone);
 
-    return (users as any[]).map((u) => {
+    const rows2 = (users as any[]).map((u) => {
       const policy = policyOf(u)!;
       const mine = records.filter((r: any) => r.userId === u.id);
       const result = calculateMonth({
@@ -55,14 +60,17 @@ export class ReportsService {
         holidays: holidays.map((h: any) => h.date),
         leaveDays: leaves.filter((l: any) => l.userId === u.id).flatMap((l: any) => expandDateRange(l.fromDate, l.toDate)),
         excusedDays: excuses.filter((e: any) => e.userId === u.id).map((e: any) => e.localDate),
+        activeFrom: startOf(u), activeTo: u.endDate ?? undefined,
         asOfDate: effectiveAsOf(now, policy, mine.some((r: any) => r.localDate === now.date)),
       });
       return { userId: u.id, name: u.name, role: u.role, branchId: u.branchId, result, row: summarize(u.id, u.name, toMinor(u.baseSalary), result), policy };
     });
+    return rows2.filter((c) => c.result.days.some((d) => d.kind !== 'INACTIVE')); // a leaver with no days in this period is not listed
   }
 
   /** Persist immutable snapshots (with the exact policy used) once the payroll period is over. HR may re-run to recompute. */
   async close(a: AuthCtx, year: number, month: number) {
+    await this.license.assertCan('closeMonth');
     const company = await this.prisma.company.findUnique({ where: { id: a.companyId } });
     const defaultRow = await this.prisma.attendancePolicy.findFirst({ where: { companyId: a.companyId, isDefault: true, active: true } });
     const startDay = defaultRow ? normalizePolicy(defaultRow.config).payrollStartDay : 1;
@@ -90,7 +98,7 @@ export class ReportsController {
 
   @Get('reports/payroll.csv') @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Cache-Control', 'no-store')
   async payroll(@Auth() a: AuthCtx, @Query('year') y: string, @Query('month') m: string, @Res({ passthrough: true }) res: any) {
-    requireRole(a, ...HR_ROLES);
+    requireRole(a, ...HR_ROLES); await this.svc.assertExport();
     const rows = (await this.svc.compute(a.companyId, Number(y), Number(m))).map((c) => c.row);
     res.setHeader('Content-Disposition', `attachment; filename="payroll-${Number(y)}-${String(Number(m)).padStart(2, '0')}.csv"`);
     return toCsv(rows);

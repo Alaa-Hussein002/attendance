@@ -6,3 +6,11 @@ dist
 *.tsbuildinfo
 .expo
 agent-state.json
+
+# Expo prebuild output (not needed for Expo Go / EAS)
+apps/mobile/android
+apps/mobile/ios
+
+# licence signing keys: vendor secrets
+license-keys/
+*.pem

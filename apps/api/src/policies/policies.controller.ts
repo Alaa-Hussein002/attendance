@@ -3,8 +3,7 @@ import { AttendancePolicy } from '@attendance/shared';
 import { Auth, AuthCtx, requireRole } from '../common/auth-context';
 import { PoliciesService } from './policies.service';
 
-import { ADMIN_ONLY } from '../common/http';
-const HR_ROLES = ['HR', 'COMPANY_ADMIN'];
+import { ADMIN_ONLY, HR_ROLES } from '../common/http';
 
 @Controller('policies')
 export class PoliciesController {

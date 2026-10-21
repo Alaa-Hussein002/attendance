@@ -166,3 +166,17 @@ describe('timezone', () => {
   it('UTC -> Riyadh', () => expect(toLocalParts(new Date('2026-03-01T06:59:00Z'))).toEqual({ date: '2026-03-01', minutes: 599 }));
   it('crosses midnight', () => expect(toLocalParts(new Date('2026-03-01T21:30:00Z'))).toEqual({ date: '2026-03-02', minutes: 30 }));
 });
+
+describe('employment window (new hires / leavers)', () => {
+  it('days before the start date are INACTIVE, not absences', () => {
+    const r = run({ records: allGreen().filter((x) => x.date >= d(16)), activeFrom: d(16) });
+    expect(st(r, 1)).toBe('INACTIVE'); expect(st(r, 15)).toBe('INACTIVE'); expect(r.totalDeductions).toBe(0);
+  });
+  it('a new hire with all-green days since joining still earns the bonus', () =>
+    expect(run({ records: allGreen().filter((x) => x.date >= d(16)), activeFrom: d(16) }).bonus).toBe(5000));
+  it('days after the last working day are INACTIVE', () => {
+    const r = run({ records: allGreen().filter((x) => x.date <= d(10)), activeTo: d(10) });
+    expect(st(r, 11)).toBe('INACTIVE'); expect(r.totalDeductions).toBe(0);
+  });
+  it('an absence INSIDE the window is still charged (last working day: nothing later to redeem it)', () => expect(run({ records: allGreen([31]), activeFrom: d(16) }).absentDeductions).toBe(10000));
+});

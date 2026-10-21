@@ -6,6 +6,7 @@ import { PrismaService } from '../common/prisma.service';
 import { randomBytes } from 'crypto';
 import { sha256 } from '../auth/crypto';
 import { AgentService } from '../agent/agent.service';
+import { LicenseService } from '../license/license.service';
 
 interface DeviceDto { branchId: string; name: string; brand?: string; model?: string; host: string; port?: number; serialNumber?: string; active?: boolean; notes?: string }
 const HOST_RE = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[a-zA-Z0-9]([a-zA-Z0-9.-]{0,251}[a-zA-Z0-9])?)$/;
@@ -15,7 +16,7 @@ const pub = (d: any) => { const { apiKeyHash, ...rest } = d; return { ...rest, h
 
 @Injectable()
 export class DevicesService {
-  constructor(private prisma: PrismaService, private agent: AgentService) {}
+  constructor(private prisma: PrismaService, private agent: AgentService, private license: LicenseService) {}
   private async valid(a: AuthCtx, d: DeviceDto) {
     check(d.name?.trim(), 'NAME_REQUIRED'); check(HOST_RE.test(d.host ?? ''), 'INVALID_HOST');
     const port = d.port ?? 4370; check(Number.isInteger(port) && port > 0 && port < 65536, 'INVALID_PORT');
@@ -42,12 +43,13 @@ export class DevicesService {
   }
   /** Fingerprint ids seen on a device that no employee owns yet. */
   async unmapped(companyId: string) {
-    const rows: any = await this.prisma.punchLog.groupBy({ by: ['deviceId', 'biometricId'], where: { companyId, result: 'UNMAPPED' }, _count: { _all: true }, _max: { punchedAtLocal: true } });
+    const rows: any[] = await this.prisma.punchLog.groupBy({ by: ['deviceId', 'biometricId'], where: { companyId, result: 'UNMAPPED' }, _count: { _all: true }, _max: { punchedAtLocal: true } } as any);
     const devs = await this.prisma.biometricDevice.findMany({ where: { companyId } });
-    return rows.map((r: any) => ({ deviceId: r.deviceId, deviceName: devs.find((d: any) => d.id === r.deviceId)?.name ?? '—', biometricId: r.biometricId, punches: r._count._all, lastPunch: r._max.punchedAtLocal })).sort((a: any, b: any) => b.punches - a.punches);
+    return rows.map((r) => ({ deviceId: r.deviceId, deviceName: devs.find((d: any) => d.id === r.deviceId)?.name ?? '—', biometricId: r.biometricId, punches: r._count._all, lastPunch: r._max.punchedAtLocal })).sort((a, b) => b.punches - a.punches);
   }
 
   async create(a: AuthCtx, d: DeviceDto) {
+    await this.license.assertFeature('fingerprint');
     const port = await this.valid(a, d); const apiKey = newKey();
     const row = await this.prisma.biometricDevice.create({ data: { companyId: a.companyId, branchId: d.branchId, name: d.name.trim(), brand: d.brand ?? 'ZKTECO', model: d.model?.trim() || null,
       host: d.host.trim(), port, serialNumber: d.serialNumber?.trim() || null, notes: d.notes?.slice(0, 300) || null, apiKeyHash: sha256(apiKey) } });

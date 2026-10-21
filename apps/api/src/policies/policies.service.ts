@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AttendancePolicy, normalizePolicy, validatePolicy } from '@attendance/shared';
 import { PrismaService } from '../common/prisma.service';
-import { Prisma } from '@prisma/client';
+import { LicenseService } from '../license/license.service';
 
 @Injectable()
 export class PoliciesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private license: LicenseService) {}
 
   private assertValid(config: AttendancePolicy) {
     const errors = validatePolicy(config);
@@ -19,8 +19,9 @@ export class PoliciesService {
   }
 
   async create(companyId: string, userId: string, name: string, config: AttendancePolicy, effectiveFrom: string, isDefault: boolean) {
+    await this.license.assertCan('editSettings');
     this.assertValid(config);
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return this.prisma.$transaction(async (tx) => {
       if (isDefault) await tx.attendancePolicy.updateMany({ where: { companyId, isDefault: true }, data: { isDefault: false } });
       const row = await tx.attendancePolicy.create({ data: { companyId, name, config: config as any, effectiveFrom, isDefault, createdById: userId } });
       await tx.auditLog.create({ data: { companyId, actorId: userId, action: 'POLICY_CREATE', entity: 'AttendancePolicy', entityId: row.id, after: config as any } });
@@ -30,10 +31,11 @@ export class PoliciesService {
 
   /** Editing NEVER mutates: it creates a new version so past months stay reproducible. */
   async newVersion(companyId: string, userId: string, id: string, config: AttendancePolicy, effectiveFrom: string) {
+    await this.license.assertCan('editSettings');
     this.assertValid(config);
     const old = await this.prisma.attendancePolicy.findFirst({ where: { id, companyId } });
     if (!old) throw new NotFoundException('POLICY_NOT_FOUND');
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return this.prisma.$transaction(async (tx) => {
       await tx.attendancePolicy.update({ where: { id }, data: { active: false, isDefault: false } });
       const row = await tx.attendancePolicy.create({ data: {
         companyId, name: old.name, version: old.version + 1, config: config as any, effectiveFrom,

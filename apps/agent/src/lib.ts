@@ -20,5 +20,35 @@ export function readConfig(env: Record<string, string | undefined>): Config {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('DEVICE_PORT is invalid');
   if (!(interval >= 15)) throw new Error('INTERVAL_SEC must be at least 15');
   const key = need('DEVICE_KEY'); if (!key.startsWith('bmk_') || key.length < 20) throw new Error('DEVICE_KEY looks wrong (it starts with bmk_)');
-  return { apiUrl: need('API_URL').replace(/\/+$/, ''), deviceKey: key, host: need('DEVICE_HOST'), port, intervalSec: interval, firstSyncDays: Math.max(1, Number(env.FIRST_SYNC_DAYS ?? 35)) };
+  // A garbage FIRST_SYNC_DAYS used to become NaN, which silently sent zero punches forever.
+  const days = Number(env.FIRST_SYNC_DAYS ?? 35);
+  const firstSyncDays = Number.isFinite(days) && days >= 1 ? Math.floor(days) : 35;
+  return { apiUrl: need('API_URL').replace(/\/+$/, ''), deviceKey: key, host: need('DEVICE_HOST'), port, intervalSec: interval, firstSyncDays };
+}
+
+/* ------------------------------------------------------------------ device clock */
+
+/** ZKTeco packs its clock into one 32-bit word: sec | min | hour | day | month | year since 2000. */
+export function decodeZkTime(buf: Buffer, offset = 8): Date | null {
+  if (!Buffer.isBuffer(buf) || buf.length < offset + 4) return null;
+  let t = buf.readUInt32LE(offset);
+  if (t === 0) return null;
+  const second = t % 60; t = (t - second) / 60;
+  const minute = t % 60; t = (t - minute) / 60;
+  const hour = t % 24;   t = (t - hour) / 24;
+  const day = t % 31 + 1; t = (t - (day - 1)) / 31;
+  const month = t % 12;  t = (t - month) / 12;
+  const year = t + 2000;
+  if (year < 2000 || year > 2100) return null;
+  return new Date(year, month, day, hour, minute, second); // local wall clock, same as the record decoder
+}
+
+export const CMD_GET_TIME = 201;
+
+/**
+ * Reads the terminal's own clock with the raw CMD_GET_TIME command (node-zklib 1.3.0 has no getTime()).
+ * Returns null instead of throwing: a device that cannot report its time must still upload its punches.
+ */
+export async function readDeviceTime(zk: { executeCmd(c: number, d?: string): Promise<Buffer> }): Promise<Date | null> {
+  try { return decodeZkTime(await zk.executeCmd(CMD_GET_TIME, '')); } catch { return null; }
 }

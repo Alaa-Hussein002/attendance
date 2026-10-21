@@ -1,0 +1,14 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+RUN npm install -w @attendance/web --omit=dev
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=base /app /app
+WORKDIR /app/apps/web
+EXPOSE 3001
+CMD ["npm", "run", "start"]

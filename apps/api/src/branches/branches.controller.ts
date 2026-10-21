@@ -3,13 +3,14 @@ import { isValidIpRange } from '@attendance/shared';
 import { Auth, AuthCtx, requireRole } from '../common/auth-context';
 import { ADMIN_ONLY, check, HR_ROLES } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
+import { LicenseService } from '../license/license.service';
 
 interface BranchDto { name: string; latitude?: number; longitude?: number; radiusMeters?: number;
   allowedIpRanges?: string[]; verificationModes: string[]; policyId?: string | null }
 
 @Injectable()
 export class BranchesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private license: LicenseService) {}
   private validate(b: BranchDto) {
     check(b.name?.trim(), 'NAME_REQUIRED');
     const modes = b.verificationModes ?? [];
@@ -27,7 +28,7 @@ export class BranchesService {
   }
   list(companyId: string) { return this.prisma.branch.findMany({ where: { companyId }, orderBy: { name: 'asc' } }); }
   async create(a: AuthCtx, b: BranchDto) {
-    this.validate(b); await this.checkPolicy(a.companyId, b.policyId);
+    await this.license.assertCanAddBranch(); this.validate(b); await this.checkPolicy(a.companyId, b.policyId);
     const row = await this.prisma.branch.create({ data: { companyId: a.companyId, name: b.name.trim(), latitude: b.latitude, longitude: b.longitude,
       radiusMeters: b.radiusMeters, allowedIpRanges: b.allowedIpRanges ?? [], verificationModes: b.verificationModes as any, policyId: b.policyId ?? null } });
     await this.prisma.auditLog.create({ data: { companyId: a.companyId, actorId: a.userId, action: 'BRANCH_CREATE', entity: 'Branch', entityId: row.id, after: row as any } });

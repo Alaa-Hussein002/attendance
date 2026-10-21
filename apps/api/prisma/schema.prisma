@@ -83,6 +83,8 @@ model User {
   mustChangePassword Boolean @default(false)
   tracksAttendance   Boolean @default(true)
   biometricId        String?   // user id enrolled on the fingerprint device
+  startDate          String?   // first working day (YYYY-MM-DD); earlier days are never absences
+  endDate            String?   // last working day for leavers; later days are never absences
   failedLogins Int     @default(0)
   lockedUntil  DateTime?
   baseSalary Decimal  @default(0) @db.Decimal(12, 2)
@@ -369,4 +371,15 @@ model PunchLog {
   createdAt     DateTime        @default(now())
   @@unique([deviceId, biometricId, punchedAtLocal])
   @@index([companyId, localDate])
+}
+
+// One row per installation: its identity, the activated licence key, and a monotonic clock guard.
+model LicenseState {
+  id             String    @id @default("main")
+  installationId String
+  licenseKey     String?
+  trialStartedAt DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  activatedAt    DateTime?
+  updatedAt      DateTime  @updatedAt
 }

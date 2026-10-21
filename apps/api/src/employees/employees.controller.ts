@@ -4,20 +4,27 @@ import { check, HR_ROLES } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 import { DEFAULT_PASSWORD } from '../auth/password';
 import { hashPassword } from '../auth/crypto';
+import { LicenseService } from '../license/license.service';
+import { toLocalParts } from '@attendance/shared';
 
-const SAFE = { id: true, name: true, email: true, phone: true, role: true, branchId: true, policyId: true, baseSalary: true, active: true,
+const SAFE = { startDate: true, endDate: true, id: true, name: true, email: true, phone: true, role: true, branchId: true, policyId: true, baseSalary: true, active: true,
   mustChangePassword: true, tracksAttendance: true, biometricId: true } as const;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF = ['EMPLOYEE', 'PHOTOGRAPHER', 'TEAM_LEAD', 'BRANCH_MANAGER'];
 /** Which roles each role may assign. HR cannot mint admins or other HR. */
-const ASSIGNABLE: Record<string, string[]> = { HR: STAFF, COMPANY_ADMIN: [...STAFF, 'HR', 'COMPANY_ADMIN'] };
+const ASSIGNABLE: Record<string, string[]> = {
+  HR: STAFF,
+  COMPANY_ADMIN: [...STAFF, 'HR', 'COMPANY_ADMIN'],
+  SUPER_ADMIN: [...STAFF, 'HR', 'COMPANY_ADMIN', 'SUPER_ADMIN'],
+};
 
-interface CreateDto { name: string; email: string; role?: string; branchId?: string; phone?: string; baseSalary?: number; policyId?: string | null; tracksAttendance?: boolean; biometricId?: string }
-interface UpdateDto { name?: string; phone?: string; role?: string; branchId?: string | null; baseSalary?: number; active?: boolean; policyId?: string | null; tracksAttendance?: boolean; biometricId?: string | null }
+interface CreateDto { startDate?: string; name: string; email: string; role?: string; branchId?: string; phone?: string; baseSalary?: number; policyId?: string | null; tracksAttendance?: boolean; biometricId?: string }
+interface UpdateDto { startDate?: string | null; endDate?: string | null; name?: string; phone?: string; role?: string; branchId?: string | null; baseSalary?: number; active?: boolean; policyId?: string | null; tracksAttendance?: boolean; biometricId?: string | null }
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private license: LicenseService) {}
+  private async today(companyId: string) { return toLocalParts(new Date(), (await this.prisma.company.findUnique({ where: { id: companyId } }))!.timezone).date; }
 
   private async refs(companyId: string, branchId?: string | null, policyId?: string | null) {
     if (branchId) check(await this.prisma.branch.findFirst({ where: { id: branchId, companyId } }), 'BRANCH_NOT_FOUND');
@@ -41,12 +48,14 @@ export class EmployeesService {
     check(d.name?.trim(), 'NAME_REQUIRED');
     check(EMAIL_RE.test(d.email ?? ''), 'INVALID_EMAIL');
     check(d.baseSalary === undefined || (d.baseSalary >= 0 && isFinite(d.baseSalary)), 'INVALID_SALARY');
+    check(d.startDate === undefined || /^\d{4}-\d{2}-\d{2}$/.test(d.startDate), 'INVALID_DATE');
+    await this.license.assertCanAddEmployee();
     await this.refs(a.companyId, d.branchId, d.policyId);
     const email = d.email.trim().toLowerCase();
     check(!(await this.prisma.user.findFirst({ where: { companyId: a.companyId, email } })), 'EMAIL_EXISTS');
     const u = await this.prisma.user.create({ data: { companyId: a.companyId, name: d.name.trim(), email, phone: d.phone?.trim() || null, role: role as any,
       branchId: d.branchId ?? null, policyId: d.policyId ?? null, baseSalary: d.baseSalary ?? 0, tracksAttendance: d.tracksAttendance ?? true,
-      biometricId: d.biometricId?.trim() || null, passwordHash: hashPassword(DEFAULT_PASSWORD), mustChangePassword: true }, select: SAFE });
+      biometricId: d.biometricId?.trim() || null, startDate: d.startDate ?? (await this.today(a.companyId)), passwordHash: hashPassword(DEFAULT_PASSWORD), mustChangePassword: true }, select: SAFE });
     await this.prisma.auditLog.create({ data: { companyId: a.companyId, actorId: a.userId, action: 'EMPLOYEE_CREATE', entity: 'User', entityId: u.id, after: u as any } });
     return u;
   }
@@ -59,9 +68,14 @@ export class EmployeesService {
     if (d.baseSalary !== undefined) check(d.baseSalary >= 0 && isFinite(d.baseSalary), 'INVALID_SALARY');
     if (d.name !== undefined) check(d.name.trim(), 'NAME_REQUIRED');
     if (id === a.userId && d.active === false) check(false, 'CANNOT_DEACTIVATE_SELF');
+    check(d.startDate == null || /^\d{4}-\d{2}-\d{2}$/.test(d.startDate), 'INVALID_DATE'); check(d.endDate == null || /^\d{4}-\d{2}-\d{2}$/.test(d.endDate), 'INVALID_DATE');
+    if ((d.active === true && !before.active) || (d.tracksAttendance === true && !before.tracksAttendance)) await this.license.assertCanAddEmployee();
     await this.refs(a.companyId, d.branchId, d.policyId);
     const data: any = {};
-    for (const k of ['name', 'phone', 'role', 'branchId', 'baseSalary', 'active', 'policyId', 'tracksAttendance', 'biometricId'] as const) if (d[k] !== undefined) data[k] = d[k];
+    for (const k of ['name', 'phone', 'role', 'branchId', 'baseSalary', 'active', 'policyId', 'tracksAttendance', 'biometricId', 'startDate', 'endDate'] as const) if (d[k] !== undefined) data[k] = d[k];
+    // leaving: the last working day defaults to today; coming back clears it
+    if (d.active === false && d.endDate === undefined && !before.endDate) data.endDate = await this.today(a.companyId);
+    if (d.active === true && !before.active && d.endDate === undefined) data.endDate = null;
     const u = await this.prisma.user.update({ where: { id }, data, select: SAFE });
     if (d.active === false) await this.prisma.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     await this.prisma.auditLog.create({ data: { companyId: a.companyId, actorId: a.userId, action: 'EMPLOYEE_UPDATE', entity: 'User', entityId: id, before: before as any, after: u as any } });

@@ -1,0 +1,14 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+RUN npm install --workspaces --if-present --omit=dev 2>/dev/null; npm install -w @attendance/api --omit=dev
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=base /app /app
+WORKDIR /app/apps/api
+EXPOSE 3000
+CMD ["npx", "ts-node", "src/main.ts"]

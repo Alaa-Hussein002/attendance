@@ -1,5 +1,7 @@
 'use client';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { I18nProvider as SharedI18nProvider, useI18n } from '@attendance/i18n/react';
+import { isLocale } from '@attendance/i18n';
 import { api } from '../lib/api';
 
 /* ---------- toasts ---------- */

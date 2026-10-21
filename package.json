@@ -4,7 +4,8 @@
   "workspaces": [
     "packages/*",
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/store"
   ],
   "scripts": {
     "test": "npm test --workspaces --if-present",

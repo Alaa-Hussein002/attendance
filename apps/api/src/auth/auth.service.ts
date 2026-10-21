@@ -47,6 +47,7 @@ export class AuthService {
 
     // First login with the shared default password: always confirm by email OTP, then force a new password.
     if (user.mustChangePassword) return this.startOtp(user, dto.deviceUid ?? 'web', 'FIRST_LOGIN');
+    if (!user.emailVerifiedAt) return this.startOtp(user, dto.deviceUid ?? 'web', 'FIRST_LOGIN');
 
     if (!dto.deviceUid) {
       if (!WEB_ROLES.includes(user.role)) throw new BadRequestException('DEVICE_REQUIRED');
