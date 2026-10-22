@@ -27,6 +27,10 @@ a { color: inherit; }
 .navlink.on::before { content: ''; position: absolute; inset-inline-start: -16px; top: 10px; bottom: 10px; width: 4px; border-radius: 4px; background: var(--accent); }
 .navlink svg { width: 20px; height: 20px; flex: none; }
 .side .spacer { flex: 1; }
+.lang-switch { display: flex; gap: 4px; background: #1b1b1b; border: 1px solid #2a2a2a; border-radius: 10px; padding: 4px; margin: 0 8px 12px; }
+.lang-switch button { flex: 1; border: 0; background: transparent; color: #9b988f; font: inherit; font-size: 12px; font-weight: 600; padding: 7px 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.lang-switch button:hover { color: var(--paper); }
+.lang-switch button.on { background: var(--paper); color: var(--black); }
 .userchip { border-top: 1px solid #2a2a2a; padding: 14px 8px 0; display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .userchip .av { width: 36px; height: 36px; border-radius: 50%; background: var(--paper); color: var(--black); display: grid; place-items: center; font-weight: 700; flex: none; }
 .userchip button { margin-inline-start: auto; background: none; border: 1px solid #333; color: #b9b6ad; padding: 6px 10px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12px; }
@@ -98,11 +102,20 @@ td { padding: 12px; border-bottom: 1px solid var(--soft); vertical-align: middle
 /* auth screens */
 .auth { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
 .auth .art { background: var(--black); color: var(--paper); position: relative; overflow: hidden; padding: 44px; display: flex; flex-direction: column; justify-content: space-between; }
-.auth .art .mark { position: absolute; inset-inline-end: -14%; bottom: -12%; width: 78%; filter: invert(1); opacity: .96; }
+.auth .art > img[aria-hidden="true"] { opacity: .35; }
 .auth .art .lock { height: 60px; filter: invert(1); width: auto; position: relative; }
-.auth .art .claim { position: relative; z-index: 1; max-width: 360px; } .auth .art .claim h2 { font-family: var(--font-en); font-size: 34px; line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em; direction: ltr; }
+.auth .art .claim { position: relative; z-index: 1; max-width: 360px; padding: 16px 18px; border-radius: 16px; background: rgba(17, 17, 17, .62); backdrop-filter: blur(8px); box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
+.auth .art .claim h2 { font-family: var(--font-en); font-size: 34px; line-height: 1.1; text-transform: uppercase; letter-spacing: -.01em; direction: ltr; text-shadow: 0 2px 16px rgba(0, 0, 0, .65); }
 .auth .art .claim .rule { width: 36px; height: 4px; background: var(--accent); margin: 16px 0; border-radius: 2px; }
-.auth .form { display: grid; place-items: center; padding: 32px 20px; } .auth .box { width: min(440px, 100%); }
+.auth .art .claim .tagline { font-family: var(--font-ar); font-size: 14px; font-weight: 600; letter-spacing: 0; opacity: .82; text-shadow: 0 1px 10px rgba(0, 0, 0, .65); }
+[dir=ltr] .auth .art .claim .tagline { font-family: var(--font-en); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+[dir=rtl] .auth .art .claim { text-align: right; }
+[dir=rtl] .auth .art .claim h2 { font-family: var(--font-ar); font-size: 32px; line-height: 1.25; text-transform: none; letter-spacing: 0; direction: rtl; }
+[dir=rtl] .auth .art .claim .rule { margin-inline-start: auto; }
+.auth .form { display: grid; place-items: center; padding: 32px 20px; position: relative; } .auth .box { width: min(440px, 100%); }
+.auth .auth-lang { position: absolute; top: 16px; inset-inline-end: 18px; }
+html[lang=en] body, html[lang=en] input, html[lang=en] select, html[lang=en] textarea, html[lang=en] button { font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif; }
+html[lang=en] body { letter-spacing: -.005em; }
 .auth .box h1 { font-size: 26px; margin-bottom: 6px; } .auth .box > p { color: var(--muted); margin: 0 0 22px; }
 @media (max-width: 880px) { .auth { grid-template-columns: 1fr; } .auth .art { display: none; } }
 .otp { display: flex; gap: 9px; justify-content: center; direction: ltr; } .otp input { width: 52px; height: 60px; text-align: center; font-size: 26px; font-weight: 700; padding: 0; border-radius: 14px; }

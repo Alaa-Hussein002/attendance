@@ -14,7 +14,7 @@ interface AskOpts { title: string; body?: string; label: string; minLength?: num
 interface NoticeOpts { title: string; body: ReactNode; tone?: 'info' | 'warn' }
 type Dialog = ({ kind: 'notice'; opts: NoticeOpts; done: () => void } | { kind: 'confirm'; opts: ConfirmOpts; done: (v: boolean) => void } | { kind: 'ask'; opts: AskOpts; done: (v: string | null) => void }) | null;
 /* ---------- server meta (clock, company, payroll month) ---------- */
-export interface Meta { needsSetup: boolean; existingData: boolean; company: { name: string; code: string } | null; multiCompany: boolean; timezone: string; serverTime: string; today: string;
+export interface Meta { needsSetup: boolean; existingData: boolean; company: { name: string } | null; timezone: string; serverTime: string; today: string;
   payrollMonth: { year: number; month: number; from: string; to: string } }
 
 const ToastCtx = createContext<Toasts>(null as any);
@@ -25,6 +25,7 @@ export const useDialog = () => useContext(DialogCtx);
 export const useMeta = () => useContext(MetaCtx);
 
 export default function Providers({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -47,31 +48,32 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={toast}><DialogCtx.Provider value={{ confirm, ask, notice }}><MetaCtx.Provider value={{ meta, offsetMs, reload }}>
       {children}
-      <div className="toasts" role="status" aria-live="polite">{toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`}><div><b>{t.title}</b>{t.body && <span>{t.body}</span>}</div>
-          <button aria-label="إغلاق" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}>×</button></div>))}</div>
+      <div className="toasts" role="status" aria-live="polite">{toasts.map((item) => (
+        <div key={item.id} className={`toast ${item.kind}`}><div><b>{item.title}</b>{item.body && <span>{item.body}</span>}</div>
+          <button aria-label={t('common.close')} onClick={() => setToasts((x) => x.filter((y) => y.id !== item.id))}>×</button></div>))}</div>
       {dialog && <DialogView d={dialog} />}
     </MetaCtx.Provider></DialogCtx.Provider></ToastCtx.Provider>
   );
 }
 
 function DialogView({ d }: { d: NonNullable<Dialog> }) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   if (d.kind === 'notice') return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && d.done()}><div className="modal" role="dialog" aria-modal>
       <div className="ico" style={{ background: d.opts.tone === 'warn' ? '#fdebe4' : 'var(--soft)' }}><span style={{ fontSize: 24 }}>{d.opts.tone === 'warn' ? '⏳' : 'ⓘ'}</span></div>
       <h3>{d.opts.title}</h3><div className="muted" style={{ lineHeight: 1.9 }}>{d.opts.body}</div>
-      <div className="actions"><button className="btn primary" autoFocus onClick={() => d.done()}>حسناً</button></div></div></div>);
+      <div className="actions"><button className="btn primary" autoFocus onClick={() => d.done()}>{t('common.ok')}</button></div></div></div>);
   if (d.kind === 'confirm') return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && d.done(false)}><div className="modal" role="dialog" aria-modal>
       <h3>{d.opts.title}</h3>{d.opts.body && <div className="muted">{d.opts.body}</div>}
-      <div className="actions"><button className={`btn ${d.opts.danger ? 'accent' : 'primary'}`} autoFocus onClick={() => d.done(true)}>{d.opts.confirmText ?? 'تأكيد'}</button>
-        <button className="btn" onClick={() => d.done(false)}>إلغاء</button></div></div></div>);
+      <div className="actions"><button className={`btn ${d.opts.danger ? 'accent' : 'primary'}`} autoFocus onClick={() => d.done(true)}>{d.opts.confirmText ?? t('common.confirm')}</button>
+        <button className="btn" onClick={() => d.done(false)}>{t('common.cancel')}</button></div></div></div>);
   const ok = text.trim().length >= (d.opts.minLength ?? 1);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && d.done(null)}><div className="modal" role="dialog" aria-modal>
       <h3>{d.opts.title}</h3>{d.opts.body && <p className="muted" style={{ marginTop: 0 }}>{d.opts.body}</p>}
       <div className="field"><label>{d.opts.label}</label><textarea rows={3} autoFocus value={text} onChange={(e) => setText(e.target.value)} /></div>
-      <div className="actions"><button className="btn primary" disabled={!ok} onClick={() => d.done(text.trim())}>{d.opts.confirmText ?? 'متابعة'}</button>
-        <button className="btn" onClick={() => d.done(null)}>إلغاء</button></div></div></div>);
+      <div className="actions"><button className="btn primary" disabled={!ok} onClick={() => d.done(text.trim())}>{d.opts.confirmText ?? t('w.dialog.continue')}</button>
+        <button className="btn" onClick={() => d.done(null)}>{t('common.cancel')}</button></div></div></div>);
 }

@@ -1,11 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AttendancePolicy, normalizePolicy, validatePolicy } from '@attendance/shared';
 import { PrismaService } from '../common/prisma.service';
-import { LicenseService } from '../license/license.service';
 
 @Injectable()
 export class PoliciesService {
-  constructor(private prisma: PrismaService, private license: LicenseService) {}
+  constructor(private prisma: PrismaService) {}
 
   private assertValid(config: AttendancePolicy) {
     const errors = validatePolicy(config);
@@ -19,7 +18,6 @@ export class PoliciesService {
   }
 
   async create(companyId: string, userId: string, name: string, config: AttendancePolicy, effectiveFrom: string, isDefault: boolean) {
-    await this.license.assertCan('editSettings');
     this.assertValid(config);
     return this.prisma.$transaction(async (tx) => {
       if (isDefault) await tx.attendancePolicy.updateMany({ where: { companyId, isDefault: true }, data: { isDefault: false } });
@@ -31,7 +29,6 @@ export class PoliciesService {
 
   /** Editing NEVER mutates: it creates a new version so past months stay reproducible. */
   async newVersion(companyId: string, userId: string, id: string, config: AttendancePolicy, effectiveFrom: string) {
-    await this.license.assertCan('editSettings');
     this.assertValid(config);
     const old = await this.prisma.attendancePolicy.findFirst({ where: { id, companyId } });
     if (!old) throw new NotFoundException('POLICY_NOT_FOUND');

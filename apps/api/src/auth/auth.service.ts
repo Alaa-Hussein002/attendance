@@ -18,17 +18,15 @@ const pwdSecret = () => `${process.env.JWT_SECRET}:pwd`; // distinct key so a pa
 export class AuthService {
   constructor(private prisma: PrismaService, private jwt: JwtService, private sender: OtpSender) {}
 
-  /** Single-company installs need no company code. */
-  private async companyId(code?: string) {
-    if (code) return (await this.prisma.company.findUnique({ where: { slug: code } }))?.id ?? null;
-    const all = await this.prisma.company.findMany({ select: { id: true }, take: 2 });
-    if (all.length === 1) return all[0].id;
-    throw new BadRequestException('COMPANY_CODE_REQUIRED');
+  /** One installation = one company. No company code is needed at login. */
+  private async companyId() {
+    const company = await this.prisma.company.findFirst({ orderBy: { createdAt: 'asc' }, select: { id: true } });
+    return company?.id ?? null;
   }
 
-  async login(dto: { companyCode?: string; email: string; password: string; deviceUid?: string }) {
+  async login(dto: { email: string; password: string; deviceUid?: string }) {
     const now = new Date();
-    const cid = await this.companyId(dto.companyCode?.trim() || undefined);
+    const cid = await this.companyId();
     const user = cid ? await this.prisma.user.findFirst({
       where: { email: String(dto.email ?? '').trim().toLowerCase(), companyId: cid, active: true },
       include: { devices: { where: { active: true } } } }) : null;

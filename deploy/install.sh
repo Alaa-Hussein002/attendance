@@ -42,10 +42,9 @@ DB_PASSWORD=$DBP
 JWT_SECRET=$JWTS
 APP_VERSION=$VERSION
 PUBLIC_API_URL=http://localhost:3000
-VENDOR_URL=https://baytalmosawer.com
 EOF
   echo "[OK] .env created with random secrets"
-  echo "     Edit .env later to add SMTP_* and LICENSE_PUBLIC_KEY"
+  echo "     Edit .env later to add SMTP_* settings"
 else
   echo "[OK] .env already exists"
 fi
@@ -94,6 +93,6 @@ echo
 echo "============================================"
 echo "  Installation complete!"
 echo "  Open http://localhost:3000 in your browser."
-echo "  Complete the setup wizard, then visit"
-echo "  the Subscription page for your installation ID."
+echo "  Complete the setup wizard to start using"
+echo "  the system."
 echo "============================================"

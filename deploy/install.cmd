@@ -48,10 +48,9 @@ if not exist ".env" (
     echo JWT_SECRET=!JWTS!
     echo APP_VERSION=latest
     echo PUBLIC_API_URL=http://localhost:3000
-    echo VENDOR_URL=https://baytalmosawer.com
   ) > .env
   echo [OK] .env created with random secrets
-  echo      Edit .env later to add SMTP_* and LICENSE_PUBLIC_KEY
+  echo      Edit .env later to add SMTP_* settings
 ) else (
   echo [OK] .env already exists
 )
@@ -104,8 +103,8 @@ echo.
 echo  ============================================
 echo   Installation complete!
 echo   Open http://localhost:3000 in your browser.
-echo   Complete the setup wizard, then visit
-echo   Subscription page for your installation ID.
+echo   Complete the setup wizard to start using
+echo   the system.
 echo  ============================================
 echo.
 echo Press any key to close this window ...

@@ -15,5 +15,5 @@ export const ADMIN_ONLY = ['COMPANY_ADMIN', 'SUPER_ADMIN'];
 export const HR_AREA = [...ADMIN_ONLY, 'HR'];
 export const TASK_AREA = [...HR_AREA, 'TEAM_LEAD'];
 export const ADMIN_ROLES = TASK_AREA; // everyone who may use the web panel
-export const PATH_ROLES: Record<string, string[]> = { '/reports': HR_AREA, '/employees': HR_AREA, '/leaves': HR_AREA, '/tasks': TASK_AREA, '/branches': ADMIN_ONLY, '/settings': ADMIN_ONLY, '/subscription': ADMIN_ONLY };
+export const PATH_ROLES: Record<string, string[]> = { '/reports': HR_AREA, '/employees': HR_AREA, '/leaves': HR_AREA, '/tasks': TASK_AREA, '/branches': ADMIN_ONLY, '/settings': ADMIN_ONLY };
 export const homeFor = (role: string) => (HR_AREA.includes(role) ? '/reports' : '/tasks');

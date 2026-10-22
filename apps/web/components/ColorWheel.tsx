@@ -1,5 +1,6 @@
 'use client';
 import { useRef } from 'react';
+import { useI18n } from '@attendance/i18n/react';
 
 const clamp = (n: number, a = 0, b = 1) => Math.min(b, Math.max(a, n));
 function hexToHsv(hex: string): [number, number, number] {
@@ -16,6 +17,7 @@ const SWATCHES = ['#22a559', '#e65a2e', '#111111', '#2f6fed', '#f0b429', '#8e44a
 
 /** Hue around the ring, saturation towards the edge, brightness on the slider. */
 export default function ColorWheel({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [h, s, v] = hexToHsv(value);
   const pick = (e: React.PointerEvent) => {
@@ -26,11 +28,11 @@ export default function ColorWheel({ value, onChange }: { value: string; onChang
   return (
     <div className="row" style={{ gap: 18, alignItems: 'flex-start' }}>
       <div>
-        <div ref={ref} className="wheel" onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); pick(e); }} onPointerMove={(e) => e.buttons === 1 && pick(e)} role="slider" aria-label="اختيار اللون">
+        <div ref={ref} className="wheel" onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); pick(e); }} onPointerMove={(e) => e.buttons === 1 && pick(e)} role="slider" aria-label={t('w.map.colorHint')}>
           <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#000', opacity: 1 - v, pointerEvents: 'none' }} />
           <div className="pin" style={{ left: `${50 + Math.cos(a) * s * 50}%`, top: `${50 + Math.sin(a) * s * 50}%`, background: value }} />
         </div>
-        <input type="range" min={15} max={100} value={Math.round(v * 100)} onChange={(e) => onChange(hsvToHex(h, s, Number(e.target.value) / 100))} style={{ marginTop: 12, padding: 0 }} aria-label="سطوع اللون" />
+        <input type="range" min={15} max={100} value={Math.round(v * 100)} onChange={(e) => onChange(hsvToHex(h, s, Number(e.target.value) / 100))} style={{ marginTop: 12, padding: 0 }} aria-label={t('w.map.brightness')} />
       </div>
       <div className="stack" style={{ minWidth: 150 }}>
         <div className="row"><span className="dot" style={{ width: 34, height: 34, background: value, borderRadius: 10 }} /><input dir="ltr" value={value} maxLength={7} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && onChange(e.target.value)} style={{ width: 110 }} /></div>

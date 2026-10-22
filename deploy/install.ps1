@@ -19,9 +19,8 @@ DB_PASSWORD=$db
 JWT_SECRET=$jwt
 APP_VERSION=$Version
 PUBLIC_API_URL=http://localhost:3000
-VENDOR_URL=https://baytalmosawer.com
 "@ | Set-Content .env
-  Write-Host "   .env created. Add SMTP_* and LICENSE_PUBLIC_KEY, then re-run."
+  Write-Host "   .env created. Add SMTP_* settings, then re-run."
 }
 
 Write-Host "==> Pulling images"

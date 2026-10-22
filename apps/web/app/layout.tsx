@@ -1,8 +1,8 @@
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
 import type { ReactNode } from 'react';
-import { cookies } from 'next/headers';
-import { isLocale, dir, DEFAULT_LOCALE } from '@attendance/i18n';
+import { cookies, headers } from 'next/headers';
+import { isLocale, dir, resolveLocale, DEFAULT_LOCALE } from '@attendance/i18n';
 import Providers from '../components/Providers';
 import Shell from '../components/Shell';
 import I18nClientProvider from '../components/I18nClientProvider';
@@ -11,7 +11,9 @@ export const metadata = { title: 'Bayt Al Mosawer — Attendance & Payroll', des
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const raw = cookies().get('locale')?.value;
-  const locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
+  // First visit: match the browser's preferred language instead of flashing the default Arabic shell.
+  const accept = (headers().get('accept-language') ?? '').split(',').map((s) => s.split(';')[0].trim()).filter(Boolean);
+  const locale = isLocale(raw) ? raw : resolveLocale(accept, DEFAULT_LOCALE);
   return (
     <html lang={locale} dir={dir(locale)}>
       <head>

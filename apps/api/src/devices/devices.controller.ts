@@ -6,7 +6,6 @@ import { PrismaService } from '../common/prisma.service';
 import { randomBytes } from 'crypto';
 import { sha256 } from '../auth/crypto';
 import { AgentService } from '../agent/agent.service';
-import { LicenseService } from '../license/license.service';
 
 interface DeviceDto { branchId: string; name: string; brand?: string; model?: string; host: string; port?: number; serialNumber?: string; active?: boolean; notes?: string }
 const HOST_RE = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[a-zA-Z0-9]([a-zA-Z0-9.-]{0,251}[a-zA-Z0-9])?)$/;
@@ -16,7 +15,7 @@ const pub = (d: any) => { const { apiKeyHash, ...rest } = d; return { ...rest, h
 
 @Injectable()
 export class DevicesService {
-  constructor(private prisma: PrismaService, private agent: AgentService, private license: LicenseService) {}
+  constructor(private prisma: PrismaService, private agent: AgentService) {}
   private async valid(a: AuthCtx, d: DeviceDto) {
     check(d.name?.trim(), 'NAME_REQUIRED'); check(HOST_RE.test(d.host ?? ''), 'INVALID_HOST');
     const port = d.port ?? 4370; check(Number.isInteger(port) && port > 0 && port < 65536, 'INVALID_PORT');
@@ -49,7 +48,6 @@ export class DevicesService {
   }
 
   async create(a: AuthCtx, d: DeviceDto) {
-    await this.license.assertFeature('fingerprint');
     const port = await this.valid(a, d); const apiKey = newKey();
     const row = await this.prisma.biometricDevice.create({ data: { companyId: a.companyId, branchId: d.branchId, name: d.name.trim(), brand: d.brand ?? 'ZKTECO', model: d.model?.trim() || null,
       host: d.host.trim(), port, serialNumber: d.serialNumber?.trim() || null, notes: d.notes?.slice(0, 300) || null, apiKeyHash: sha256(apiKey) } });

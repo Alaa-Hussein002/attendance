@@ -3,12 +3,11 @@
  *
  * The API speaks language-neutral error CODES ("INVALID_CREDENTIALS"); this package turns a code into a
  * sentence in the user's language. Dictionaries are flat, dotted-key maps so that every app (admin panel,
- * employee app, storefront) can extend them without touching the others.
+ * employee app) can extend them without touching the others.
  */
 import { en as commonEn, ar as commonAr } from './dict/common';
 import { en as webEn, ar as webAr } from './dict/web';
 import { en as mobileEn, ar as mobileAr } from './dict/mobile';
-import { en as storeEn, ar as storeAr } from './dict/store';
 import type { Locale, MsgValue, Plural } from './types';
 
 export type { Locale, MsgValue, Plural };
@@ -19,8 +18,8 @@ export const isLocale = (v: unknown): v is Locale => v === 'ar' || v === 'en';
 export const dir = (l: Locale): 'rtl' | 'ltr' => (l === 'ar' ? 'rtl' : 'ltr');
 export const localeName = (l: Locale): string => (l === 'ar' ? 'العربية' : 'English');
 
-export const en = { ...commonEn, ...webEn, ...mobileEn, ...storeEn };
-export const ar = { ...commonAr, ...webAr, ...mobileAr, ...storeAr };
+export const en = { ...commonEn, ...webEn, ...mobileEn };
+export const ar = { ...commonAr, ...webAr, ...mobileAr };
 
 export type MsgKey = keyof typeof en;
 const DICT: Record<Locale, Record<string, MsgValue>> = { en, ar };

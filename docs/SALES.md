@@ -1,5 +1,7 @@
 # Selling Bayt Al Mosawer — playbook
 
+> **Archived:** the subscription/storefront model was removed. The product is now a single company (Bayt Al Mosawer) with branches. This file is kept for history only.
+
 ## The model (what we built)
 
 - **One universal installer** for every customer. The installer is identical for all companies.

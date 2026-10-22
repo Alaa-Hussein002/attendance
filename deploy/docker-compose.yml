@@ -34,7 +34,6 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Bayt Al Mosawer}
-      LICENSE_PUBLIC_KEY: ${LICENSE_PUBLIC_KEY}
     ports:
       - '3000:3000'
     volumes:
@@ -46,7 +45,6 @@ services:
     depends_on: [api]
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
-      NEXT_PUBLIC_VENDOR_URL: ${VENDOR_URL:-https://baytalmosawer.com}
     ports:
       - '3001:3001'
 

@@ -11,6 +11,4 @@ agent-state.json
 apps/mobile/android
 apps/mobile/ios
 
-# licence signing keys: vendor secrets
-license-keys/
 *.pem

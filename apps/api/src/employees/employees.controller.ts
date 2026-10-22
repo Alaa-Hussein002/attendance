@@ -4,7 +4,6 @@ import { check, HR_ROLES } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 import { DEFAULT_PASSWORD } from '../auth/password';
 import { hashPassword } from '../auth/crypto';
-import { LicenseService } from '../license/license.service';
 import { toLocalParts } from '@attendance/shared';
 
 const SAFE = { startDate: true, endDate: true, id: true, name: true, email: true, phone: true, role: true, branchId: true, policyId: true, baseSalary: true, active: true,
@@ -23,7 +22,7 @@ interface UpdateDto { startDate?: string | null; endDate?: string | null; name?:
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prisma: PrismaService, private license: LicenseService) {}
+  constructor(private prisma: PrismaService) {}
   private async today(companyId: string) { return toLocalParts(new Date(), (await this.prisma.company.findUnique({ where: { id: companyId } }))!.timezone).date; }
 
   private async refs(companyId: string, branchId?: string | null, policyId?: string | null) {
@@ -49,7 +48,6 @@ export class EmployeesService {
     check(EMAIL_RE.test(d.email ?? ''), 'INVALID_EMAIL');
     check(d.baseSalary === undefined || (d.baseSalary >= 0 && isFinite(d.baseSalary)), 'INVALID_SALARY');
     check(d.startDate === undefined || /^\d{4}-\d{2}-\d{2}$/.test(d.startDate), 'INVALID_DATE');
-    await this.license.assertCanAddEmployee();
     await this.refs(a.companyId, d.branchId, d.policyId);
     const email = d.email.trim().toLowerCase();
     check(!(await this.prisma.user.findFirst({ where: { companyId: a.companyId, email } })), 'EMAIL_EXISTS');
@@ -69,7 +67,6 @@ export class EmployeesService {
     if (d.name !== undefined) check(d.name.trim(), 'NAME_REQUIRED');
     if (id === a.userId && d.active === false) check(false, 'CANNOT_DEACTIVATE_SELF');
     check(d.startDate == null || /^\d{4}-\d{2}-\d{2}$/.test(d.startDate), 'INVALID_DATE'); check(d.endDate == null || /^\d{4}-\d{2}-\d{2}$/.test(d.endDate), 'INVALID_DATE');
-    if ((d.active === true && !before.active) || (d.tracksAttendance === true && !before.tracksAttendance)) await this.license.assertCanAddEmployee();
     await this.refs(a.companyId, d.branchId, d.policyId);
     const data: any = {};
     for (const k of ['name', 'phone', 'role', 'branchId', 'baseSalary', 'active', 'policyId', 'tracksAttendance', 'biometricId', 'startDate', 'endDate'] as const) if (d[k] !== undefined) data[k] = d[k];

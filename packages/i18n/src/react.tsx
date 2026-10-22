@@ -51,6 +51,7 @@ export function I18nProvider({ children, initial = DEFAULT_LOCALE, load, save, d
       if (!alive) return;
       setLocaleState(next);
       setReady(true);
+      onChange?.(next);
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -4,14 +4,13 @@ import { ADMIN_ONLY, check } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 import { encryptSecret, normalizePhone } from './whatsapp';
 import { WhatsappService } from './whatsapp.service';
-import { LicenseService } from '../license/license.service';
 
 interface Dto { enabled?: boolean; phoneNumberId?: string; businessAccountId?: string; accessToken?: string; clearToken?: boolean; templateDaily?: string; templateReminder?: string; templateAssigned?: string; language?: string }
 const TPL = /^[a-z0-9_]{1,512}$/;
 
 @Injectable()
 export class WhatsappAdminService {
-  constructor(private prisma: PrismaService, private wa: WhatsappService, private license: LicenseService) {}
+  constructor(private prisma: PrismaService, private wa: WhatsappService) {}
   /** Never returns the token: only whether one is stored. */
   async get(companyId: string) {
     const c = await this.wa.config(companyId);
@@ -19,7 +18,6 @@ export class WhatsappAdminService {
       templateDaily: c?.templateDaily ?? '', templateReminder: c?.templateReminder ?? '', templateAssigned: c?.templateAssigned ?? '', language: c?.language ?? 'ar' };
   }
   async save(a: AuthCtx, d: Dto) {
-    if (d.enabled) await this.license.assertFeature('whatsapp');
     const cur = await this.wa.config(a.companyId);
     for (const k of ['templateDaily', 'templateReminder', 'templateAssigned'] as const) check(!d[k] || TPL.test(d[k]!), 'INVALID_TEMPLATE_NAME');
     check(!d.phoneNumberId || /^\d{5,30}$/.test(d.phoneNumberId.trim()), 'INVALID_PHONE_NUMBER_ID');

@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build -w @attendance/store",
-  "outputDirectory": "apps/store/.next",
+  "buildCommand": "npm run build -w @attendance/web",
+  "outputDirectory": "apps/web/.next",
   "installCommand": "npm install",
   "framework": "nextjs"
 }

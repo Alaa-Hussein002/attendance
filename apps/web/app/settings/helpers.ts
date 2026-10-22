@@ -1,16 +1,17 @@
 import { AttendancePolicy, DeductionRule, MAX_TIERS, Tier } from '@attendance/shared';
 
-export const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+export const toMin = (time: string) => { const [h, m] = time.split(':').map(Number); return h * 60 + m; };
 export const fromMin = (n: number) => { const c = Math.max(0, Math.min(1439, n)); return `${String(Math.floor(c / 60)).padStart(2, '0')}:${String(c % 60).padStart(2, '0')}`; };
 export const PALETTE = ['#22a559', '#f0b429', '#e65a2e', '#c8321c', '#2f6fed', '#8e44ad'];
 export const newKey = () => 'T' + Math.random().toString(36).slice(2, 7).toUpperCase();
 export { MAX_TIERS };
 
+/** Labels are dictionary keys; the screen resolves them with t(). */
 export const DED: Record<DeductionRule['type'], { label: string; unit: string; money: boolean }> = {
-  FIXED: { label: 'مبلغ ثابت', unit: 'ريال', money: true },
-  PER_MINUTE: { label: 'مبلغ عن كل دقيقة تأخير', unit: 'ريال / دقيقة', money: true },
-  SALARY_FRACTION: { label: 'جزء من أجر اليوم', unit: '× أجر اليوم (1 = يوم كامل)', money: false },
-  PERCENT_OF_SALARY: { label: 'نسبة من الراتب', unit: '% من الراتب', money: false },
+  FIXED: { label: 'w.ded.FIXED', unit: 'w.tiers.unit.FIXED', money: true },
+  PER_MINUTE: { label: 'w.ded.PER_MINUTE', unit: 'w.tiers.unit.PER_MINUTE', money: true },
+  SALARY_FRACTION: { label: 'w.ded.SALARY_FRACTION', unit: 'w.tiers.unit.SALARY_FRACTION', money: false },
+  PERCENT_OF_SALARY: { label: 'w.ded.PERCENT_OF_SALARY', unit: 'w.tiers.unit.PERCENT_OF_SALARY', money: false },
 };
 // money is stored in halalas, HR sees riyals
 export const showVal = (r: DeductionRule) => (DED[r.type].money ? r.value / 100 : r.value);
@@ -30,13 +31,13 @@ export function sanitize(p: AttendancePolicy): AttendancePolicy {
   return { ...p, redemption: { ...p.redemption, rules }, bonus: { ...p.bonus, qualifyingTier: q, allowances } };
 }
 
-/** Per-tier problem shown right under the field (the same rules the server enforces). */
+/** Per-tier problem shown right under the field (the same rules the server enforces). Returns an i18n key. */
 export function tierIssue(p: AttendancePolicy, i: number): string | null {
-  const t = p.tiers[i];
-  if (!t.label.trim()) return 'اسم المرحلة مطلوب';
-  if (!t.until) return 'حدد وقت النهاية';
+  const tier = p.tiers[i];
+  if (!tier.label.trim()) return 'w.tiers.nameRequired';
+  if (!tier.until) return 'w.tiers.untilRequired';
   const from = i === 0 ? p.shiftStart : p.tiers[i - 1].until!;
-  if (toMin(t.until) <= toMin(from)) return i === 0 ? 'يجب أن تنتهي المرحلة بعد بداية الدوام' : 'يجب أن تنتهي بعد نهاية المرحلة السابقة (لا تداخل)';
+  if (toMin(tier.until) <= toMin(from)) return i === 0 ? 'w.tiers.untilAfterStart' : 'w.tiers.untilAfterPrev';
   return null;
 }
 export const tierFrom = (p: AttendancePolicy, i: number) => (i === 0 ? p.shiftStart : p.tiers[i - 1].until!);

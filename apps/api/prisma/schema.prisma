@@ -40,7 +40,7 @@ enum LeaveStatus {
 model Company {
   id        String   @id @default(uuid())
   name      String
-  slug      String   @unique // company code used at login
+  slug      String   @unique // internal identifier; login no longer asks for it
   timezone  String   @default("Asia/Riyadh")
   createdAt DateTime @default(now())
   branches  Branch[]
@@ -371,15 +371,4 @@ model PunchLog {
   createdAt     DateTime        @default(now())
   @@unique([deviceId, biometricId, punchedAtLocal])
   @@index([companyId, localDate])
-}
-
-// One row per installation: its identity, the activated licence key, and a monotonic clock guard.
-model LicenseState {
-  id             String    @id @default("main")
-  installationId String
-  licenseKey     String?
-  trialStartedAt DateTime  @default(now())
-  lastSeenAt     DateTime  @default(now())
-  activatedAt    DateTime?
-  updatedAt      DateTime  @updatedAt
 }

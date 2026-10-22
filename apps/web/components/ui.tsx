@@ -1,5 +1,6 @@
 'use client';
 import { ReactNode, useEffect, useRef } from 'react';
+import { useI18n } from '@attendance/i18n/react';
 
 export function PageHeader({ title, sub, right }: { title: string; sub?: ReactNode; right?: ReactNode }) {
   return (<div className="page-head"><div><div className="rule" /><h1>{title}</h1>{sub && <p>{sub}</p>}</div>{right && <div className="row">{right}</div>}</div>);
@@ -10,7 +11,7 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 export function Field({ label, help, error, children }: { label: ReactNode; help?: ReactNode; error?: ReactNode; children: ReactNode }) {
   return (<div className="field"><label>{label}</label>{children}{error ? <div className="err">{error}</div> : help ? <div className="help">{help}</div> : null}</div>);
 }
-export const Spinner = () => <span className="spin" aria-label="جارٍ التحميل" />;
+export const Spinner = () => { const { t } = useI18n(); return <span className="spin" aria-label={t('w.spinner.loading')} />; };
 
 /** 6 separate boxes; supports typing, backspace and pasting the whole code. */
 export function OtpInput({ value, onChange, onComplete }: { value: string; onChange: (v: string) => void; onComplete?: (v: string) => void }) {
@@ -28,12 +29,13 @@ export function OtpInput({ value, onChange, onComplete }: { value: string; onCha
 /** Mirrors the server's password policy so the user sees problems before submitting. */
 export function passwordChecks(pw: string, confirm?: string) {
   return [
-    { ok: pw.length >= 8, text: '8 خانات على الأقل' },
-    { ok: /[A-Za-z\u0600-\u06FF]/.test(pw) && /\d/.test(pw), text: 'تحتوي حرفاً ورقماً' },
-    { ok: pw !== '12345678' && !/^(.)\1+$/.test(pw) && pw.length > 0, text: 'ليست كلمة بسيطة أو الافتراضية' },
-    ...(confirm !== undefined ? [{ ok: pw.length > 0 && pw === confirm, text: 'التأكيد مطابق' }] : []),
+    { ok: pw.length >= 8, key: 'w.password.min' },
+    { ok: /[A-Za-z\u0600-\u06FF]/.test(pw) && /\d/.test(pw), key: 'w.password.letterDigit' },
+    { ok: pw !== '12345678' && !/^(.)\1+$/.test(pw) && pw.length > 0, key: 'w.password.simple' },
+    ...(confirm !== undefined ? [{ ok: pw.length > 0 && pw === confirm, key: 'w.password.match' }] : []),
   ];
 }
 export function PasswordRules({ pw, confirm }: { pw: string; confirm?: string }) {
-  return (<div className="rules">{passwordChecks(pw, confirm).map((c) => <div key={c.text} className={c.ok ? 'okk' : ''}>{c.ok ? '✓' : '○'} {c.text}</div>)}</div>);
+  const { t } = useI18n();
+  return (<div className="rules">{passwordChecks(pw, confirm).map((c) => <div key={c.key} className={c.ok ? 'okk' : ''}>{c.ok ? '✓' : '○'} {t(c.key)}</div>)}</div>);
 }

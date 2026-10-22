@@ -4,7 +4,7 @@ import { useDialog, useToast } from '../../components/Providers';
 import { Field, PageHeader, Switch } from '../../components/ui';
 import { api } from '../../lib/api';
 import { errText } from '../../lib/errors';
-import { roleLabel } from '../../lib/format';
+import { fmtDay, roleLabel } from '../../lib/format';
 import { session } from '../../lib/session';
 import { useI18n } from '@attendance/i18n/react';
 
@@ -54,7 +54,7 @@ export default function Employees() {
       <table><thead><tr><th>{t('w.employees.col.name')}</th><th>{t('w.employees.col.role')}</th><th>{t('w.employees.col.branch')}</th><th>{t('w.employees.col.salary')}</th><th>{t('w.employees.col.status')}</th><th /></tr></thead><tbody>{rows.map((u) => (
         <tr key={u.id}><td><b>{u.name}</b><div className="muted small" dir="ltr" style={{ textAlign: 'start' }}>{u.email}</div></td><td>{roleLabel(u.role, t)}</td>
           <td>{branches.find((b) => b.id === u.branchId)?.name ?? <span className="muted">—</span>}</td><td className="num">{u.baseSalary !== undefined ? Number(u.baseSalary).toFixed(2) : '—'}</td>
-          <td><div className="row" style={{ gap: 6 }}>{!u.active && <span className="badge">{u.endDate ? t('w.employees.ended', { date: u.endDate }) : t('w.employees.inactive')}</span>}{u.mustChangePassword && <span className="badge" style={{ background: '#fdebe4' }}>{t('w.employees.mustChange')}</span>}{!u.tracksAttendance && <span className="badge">{t('w.employees.notTracked')}</span>}{u.active && !u.mustChangePassword && u.tracksAttendance && <span className="badge" style={{ background: '#e4f5ea' }}>{t('w.employees.ok')}</span>}</div></td>
+          <td><div className="row" style={{ gap: 6 }}>{!u.active && <span className="badge">{u.endDate ? t('w.employees.ended', { date: fmtDay(u.endDate, t) }) : t('w.employees.inactive')}</span>}{u.mustChangePassword && <span className="badge" style={{ background: '#fdebe4' }}>{t('w.employees.mustChange')}</span>}{!u.tracksAttendance && <span className="badge">{t('w.employees.notTracked')}</span>}{u.active && !u.mustChangePassword && u.tracksAttendance && <span className="badge" style={{ background: '#e4f5ea' }}>{t('w.employees.ok')}</span>}</div></td>
           <td><div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}><button className="btn sm" onClick={() => edit(u)}>{t('w.employees.edit')}</button>
             <button className="btn sm" onClick={() => act(t('w.employees.resetPassword'), t('w.employees.resetPasswordConfirm', { name: u.name }), () => api(`/employees/${u.id}/reset-password`, { method: 'POST' }), t('w.employees.resetPasswordDone'), false)}>{t('w.employees.resetPassword')}</button>
             {['EMPLOYEE', 'PHOTOGRAPHER', 'TEAM_LEAD', 'BRANCH_MANAGER'].includes(u.role) && <button className="btn sm" onClick={async () => { const reason = await ask({ title: t('w.employees.resetDeviceTitle', { name: u.name }), body: t('w.employees.resetDeviceBody'), label: t('w.employees.resetDeviceReason'), minLength: 3 }); if (reason) { try { await api(`/employees/${u.id}/reset-device`, { method: 'POST', body: { reason } }); toast.success(t('w.employees.resetDeviceDone')); } catch (e) { toast.error(t('w.common.error'), errText(e, t)); } } }}>{t('w.employees.resetDevice')}</button>}</div></td></tr>))}</tbody></table>)}</div>

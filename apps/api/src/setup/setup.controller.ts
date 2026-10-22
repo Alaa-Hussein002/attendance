@@ -22,15 +22,15 @@ export class SetupService {
   /** Public facts the login/setup screens need. The clock is the SERVER's, in the company timezone, Gregorian calendar. */
   async meta() {
     const verified = await this.prisma.user.count({ where: { emailVerifiedAt: { not: null } } });
-    const companies = await this.prisma.company.findMany({ select: { id: true, name: true, slug: true, timezone: true }, take: 2 });
-    const c = companies.length === 1 ? companies[0] : null;
+    const companies = await this.prisma.company.findMany({ select: { id: true, name: true, slug: true, timezone: true }, orderBy: { createdAt: 'asc' }, take: 1 });
+    const c = companies[0] ?? null;
     const timezone = c?.timezone ?? 'Asia/Riyadh';
     const now = new Date();
     const local = toLocalParts(now, timezone);
     const pol = c ? await this.prisma.attendancePolicy.findFirst({ where: { companyId: c.id, isDefault: true, active: true } }) : null;
     const startDay = pol ? normalizePolicy(pol.config).payrollStartDay : DEFAULT_POLICY.payrollStartDay;
     const pm = periodOf(local.date, startDay);
-    return { needsSetup: verified === 0, existingData: companies.length > 0, company: c ? { name: c.name, code: c.slug } : null, multiCompany: companies.length > 1,
+    return { needsSetup: verified === 0, existingData: companies.length > 0, company: c ? { name: c.name } : null,
       timezone, serverTime: now.toISOString(), today: local.date, payrollMonth: { ...pm, ...periodBounds(pm.year, pm.month, startDay) } };
   }
 

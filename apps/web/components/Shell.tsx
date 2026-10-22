@@ -2,9 +2,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
-import { ADMIN_ONLY, ADMIN_ROLES, homeFor, PATH_ROLES, session, SessionUser } from '../lib/session';
+import { ADMIN_ROLES, homeFor, PATH_ROLES, session, SessionUser } from '../lib/session';
 import { api } from '../lib/api';
-import { fmtClock, fmtDay, ROLE_AR } from '../lib/format';
+import { fmtClock, fmtDay, roleLabel } from '../lib/format';
 import { Lockup } from './Logo';
 import { useMeta } from './Providers';
 import { useI18n } from '@attendance/i18n/react';
@@ -22,33 +22,13 @@ const PUBLIC = ['/login', '/setup'];
 
 function ServerClock() {
   const { meta, offsetMs } = useMeta();
+  const { t, locale } = useI18n();
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => { const t = () => setNow(new Date(Date.now() + offsetMs)); t(); const i = setInterval(t, 20000); return () => clearInterval(i); }, [offsetMs]);
+  useEffect(() => { const tick = () => setNow(new Date(Date.now() + offsetMs)); tick(); const i = setInterval(tick, 20000); return () => clearInterval(i); }, [offsetMs]);
   if (!meta || !now) return null;
   return (<div style={{ padding: '0 8px 14px', fontSize: 12, color: '#9b988f', lineHeight: 1.7 }}>
-    <div style={{ color: '#d9d6cc' }} className="num">{fmtClock(now, meta.timezone)}</div>
-    <div>فترة الرواتب: <span className="num">{fmtDay(meta.payrollMonth.from)}</span> ← <span className="num">{fmtDay(meta.payrollMonth.to)}</span></div></div>);
-}
-
-function LicenseBanner({ role }: { role: string }) {
-  const { t } = useI18n();
-  const [s, setS] = useState<any>(null);
-  useEffect(() => { if (ADMIN_ONLY.includes(role)) api('/license').then(setS).catch(() => {}); }, [role]);
-  if (!s || s.state === 'ACTIVE') return null;
-  const cls: Record<string, string> = { TRIAL: 'alert', EXPIRING: 'alert warn', GRACE: 'alert warn', RESTRICTED: 'alert err' };
-  const vendorUrl = process.env.NEXT_PUBLIC_VENDOR_URL || 'https://baytalmosawer.com';
-  const msg =
-    s.state === 'TRIAL' ? t('w.license.trial', { days: s.daysLeft }) :
-    s.state === 'EXPIRING' ? t('w.license.expiring', { days: s.daysLeft }) :
-    s.state === 'GRACE' ? t('w.license.grace', { days: s.graceLeft }) :
-    t('w.license.restricted');
-  return (
-    <div className={cls[s.state]} style={{ marginBottom: 18, justifyContent: 'space-between', alignItems: 'center' }}>
-      <span>{msg}</span>
-      {s.state === 'RESTRICTED' && <a className="btn sm primary" href={vendorUrl} target="_blank" rel="noopener">{t('w.license.renew')}</a>}
-      {s.state !== 'RESTRICTED' && <Link className="btn sm primary" href="/subscription">{t('w.license.manage')}</Link>}
-    </div>
-  );
+    <div style={{ color: '#d9d6cc' }} className="num">{fmtClock(now, meta.timezone, locale)}</div>
+    <div>{t('w.shell.payrollPeriod')}: <span className="num">{fmtDay(meta.payrollMonth.from, t)}</span> ← <span className="num">{fmtDay(meta.payrollMonth.to, t)}</span></div></div>);
 }
 
 export default function Shell({ children }: { children: ReactNode }) {
@@ -62,9 +42,10 @@ export default function Shell({ children }: { children: ReactNode }) {
   if (!user) return null;
 
   const logout = async () => { const rt = session.refresh(); if (rt) await api('/auth/logout', { method: 'POST', body: { refreshToken: rt }, auth: false }).catch(() => {}); session.clear(); router.replace('/login'); };
+  const switchTo = (next: 'ar' | 'en') => { if (next === locale) return; setLocale(next); document.cookie = `locale=${next}; path=/; max-age=31536000; samesite=lax`; router.refresh(); };
   if (!ADMIN_ROLES.includes(user.role)) return (
     <div className="auth"><div className="art"><Lockup invert height={60} /></div><div className="form"><div className="box">
-      <h1>هذه اللوحة للإدارة</h1><p>حسابك ({ROLE_AR[user.role] ?? user.role}) يسجّل الحضور من تطبيق الجوال.</p><button className="btn primary" onClick={logout}>تسجيل الخروج</button></div></div></div>);
+      <h1>{t('w.shell.adminOnly')}</h1><p>{t('w.shell.adminOnlyBody', { role: roleLabel(user.role, t) })}</p><button className="btn primary" onClick={logout}>{t('w.shell.logout')}</button></div></div></div>);
 
   const need = Object.keys(PATH_ROLES).find((k) => path.startsWith(k));
   const allowed = !need || PATH_ROLES[need].includes(user.role);
@@ -73,14 +54,17 @@ export default function Shell({ children }: { children: ReactNode }) {
       <aside className="side">
         <div className="brand"><Lockup invert height={54} /></div>
         <ServerClock />
-        <button className="btn sm ghost" style={{ margin: '4px 8px 10px', width: 'calc(100% - 16px)' }} onClick={() => { const next = locale === 'ar' ? 'en' : 'ar'; setLocale(next); document.cookie = `locale=${next}; path=/; max-age=31536000; samesite=lax`; router.refresh(); }}>{locale === 'ar' ? 'English' : 'العربية'}</button>
+        <div className="lang-switch" aria-label={t('w.shell.languageLabel')}>
+          <button type="button" className={locale === 'ar' ? 'on' : ''} onClick={() => switchTo('ar')}>{t('common.arabic')}</button>
+          <button type="button" className={locale === 'en' ? 'on' : ''} onClick={() => switchTo('en')}>{t('common.english')}</button>
+        </div>
         {NAV.filter(([href]) => PATH_ROLES[href]?.includes(user.role)).map(([href, label, icon]) => <Link key={href} href={href} className={`navlink ${path.startsWith(href) ? 'on' : ''}`}>{icon}<span>{t(label)}</span></Link>)}
         <div className="spacer" />
-        <div className="userchip"><div className="av">{user.name.slice(0, 1)}</div><div className="who"><div>{user.name}</div><div className="en" style={{ opacity: .6, fontSize: 9 }}>{ROLE_AR[user.role] ?? user.role}</div></div>
-          <button onClick={logout}>خروج</button></div>
+        <div className="userchip"><div className="av">{user.name.slice(0, 1)}</div><div className="who"><div>{user.name}</div><div className="en" style={{ opacity: .6, fontSize: 9 }}>{roleLabel(user.role, t)}</div></div>
+          <button onClick={logout}>{t('w.shell.logout')}</button></div>
       </aside>
-      <main className="main"><div className="wrap"><LicenseBanner role={user.role} />{allowed ? children : (
-        <div className="card empty" style={{ padding: 48 }}><h2 style={{ color: 'var(--black)', marginBottom: 8 }}>لا تملك صلاحية هذه الصفحة</h2><p>هذا القسم خاص بمدير النظام.</p><Link className="btn primary" href={homeFor(user.role)}>العودة</Link></div>)}</div></main>
+      <main className="main"><div className="wrap">{allowed ? children : (
+        <div className="card empty" style={{ padding: 48 }}><h2 style={{ color: 'var(--black)', marginBottom: 8 }}>{t('w.shell.noAccess')}</h2><p>{t('w.shell.noAccessBody')}</p><Link className="btn primary" href={homeFor(user.role)}>{t('w.shell.backHome')}</Link></div>)}</div></main>
     </div>
   );
 }

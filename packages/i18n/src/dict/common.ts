@@ -2,7 +2,7 @@ import type { MsgValue } from '../types';
 
 /**
  * Vocabulary shared by every surface of the product: the admin panel, the employee app and
- * the storefront. Screen-specific wording lives in dict/web.ts, dict/mobile.ts and dict/store.ts.
+ * the product. Screen-specific wording lives in dict/web.ts and dict/mobile.ts.
  *
  * Keys are flat and dotted so that each dictionary file can grow on its own without merging
  * nested objects; `t('common.save')` is the only access pattern the apps need.

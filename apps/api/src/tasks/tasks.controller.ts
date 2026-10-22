@@ -4,7 +4,6 @@ import { Auth, AuthCtx, requireRole } from '../common/auth-context';
 import { check, DATE_RE, TASK_ROLES } from '../common/http';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
-import { LicenseService } from '../license/license.service';
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 interface TaskDto { title: string; details?: string; latitude: number; longitude: number; radiusMeters?: number; address?: string; date: string; startTime: string; endTime: string; assigneeIds: string[] }
@@ -12,8 +11,7 @@ interface TaskDto { title: string; details?: string; latitude: number; longitude
 @Injectable()
 export class TasksService {
   private log = new Logger('Tasks');
-  constructor(private prisma: PrismaService, private notify: NotificationService, private license: LicenseService) {}
-  private async gate() { await this.license.assertFeature('tasks'); await this.license.assertCan('manageTasks'); }
+  constructor(private prisma: PrismaService, private notify: NotificationService) {}
   private async tz(companyId: string) { return (await this.prisma.company.findUnique({ where: { id: companyId } }))!.timezone; }
 
   view(t: any, tz: string) {
@@ -41,7 +39,6 @@ export class TasksService {
   private fire(p: Promise<unknown>) { p.catch((e) => this.log.warn(`notify failed: ${e?.message}`)); }
 
   async create(a: AuthCtx, d: TaskDto) {
-    await this.gate();
     const tz = await this.tz(a.companyId); const v = await this.valid(a, d, tz);
     const conflicts = await this.conflicts(a.companyId, v.ids, v.startsAt, v.endsAt);
     const t = await this.prisma.task.create({ data: { companyId: a.companyId, title: d.title.trim(), details: d.details?.trim() || null, latitude: d.latitude, longitude: d.longitude, radiusMeters: v.radius, address: d.address?.trim() || null,
@@ -51,7 +48,6 @@ export class TasksService {
     return { task: this.view(t, tz), conflicts };
   }
   async update(a: AuthCtx, id: string, d: TaskDto) {
-    await this.gate();
     const old = await this.prisma.task.findFirst({ where: { id, companyId: a.companyId }, include: { assignees: true } }); if (!old) throw new NotFoundException('TASK_NOT_FOUND');
     check(old.status === 'SCHEDULED', 'TASK_NOT_EDITABLE');
     const tz = await this.tz(a.companyId); const v = await this.valid(a, d, tz);
@@ -67,7 +63,6 @@ export class TasksService {
     return { task: this.view(t, tz), conflicts };
   }
   async cancel(a: AuthCtx, id: string) {
-    await this.gate();
     const t = await this.prisma.task.findFirst({ where: { id, companyId: a.companyId }, include: { assignees: { include: { user: true } } } }); if (!t) throw new NotFoundException('TASK_NOT_FOUND');
     check(t.status === 'SCHEDULED', 'TASK_NOT_EDITABLE');
     await this.prisma.task.update({ where: { id }, data: { status: 'CANCELLED' } });

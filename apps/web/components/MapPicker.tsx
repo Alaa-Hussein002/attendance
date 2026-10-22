@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '@attendance/i18n/react';
 import { Spinner } from './ui';
 
 export interface LatLng { lat: number; lng: number }
@@ -7,6 +8,7 @@ const DEFAULT: LatLng = { lat: 21.5433, lng: 39.1728 };
 
 /** Pick a branch location by clicking the map (OpenStreetMap). No coordinates are ever typed. */
 export default function MapPicker({ value, radius, onChange, onPlace }: { value: LatLng | null; radius: number; onChange: (p: LatLng) => void; onPlace?: (name: string) => void }) {
+  const { t, locale } = useI18n();
   const el = useRef<HTMLDivElement>(null);
   const api = useRef<{ L: any; map: any; marker: any; circle: any } | null>(null);
   const cb = useRef(onChange); cb.current = onChange;
@@ -31,23 +33,24 @@ export default function MapPicker({ value, radius, onChange, onPlace }: { value:
 
   useEffect(() => { const a = api.current; if (!a) return; a.circle.setRadius(radius); if (value) { a.marker.setLatLng(value).setOpacity(1); a.circle.setLatLng(value).setStyle({ opacity: 1, fillOpacity: .12 }); } }, [value, radius]);
 
+  const sep = t('w.common.listSep');
   const fly = (p: LatLng) => { api.current?.map.setView([p.lat, p.lng], 17); onChange({ lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) }); };
   async function search() {
     if (!q.trim()) return; setBusy(true); setMsg(''); setFound([]);
-    try { const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=ar&q=${encodeURIComponent(q)}`); const j = await r.json(); setFound(j); if (!j.length) setMsg('لا توجد نتائج. جرّب اسماً آخر أو حرّك الخريطة واضغط على الموقع.'); }
-    catch { setMsg('تعذر البحث الآن. يمكنك الضغط على الخريطة مباشرة.'); }
+    try { const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=${locale}&q=${encodeURIComponent(q)}`); const j = await r.json(); setFound(j); if (!j.length) setMsg(t('w.map.noResults')); }
+    catch { setMsg(t('w.map.searchError')); }
     setBusy(false);
   }
   function here() {
-    if (!navigator.geolocation) return setMsg('المتصفح لا يدعم تحديد الموقع.');
-    navigator.geolocation.getCurrentPosition((p) => fly({ lat: p.coords.latitude, lng: p.coords.longitude }), () => setMsg('لم نتمكن من تحديد موقعك. اسمح للمتصفح بالوصول للموقع أو اختر من الخريطة.'), { enableHighAccuracy: true, timeout: 10000 });
+    if (!navigator.geolocation) return setMsg(t('w.map.noGeo'));
+    navigator.geolocation.getCurrentPosition((p) => fly({ lat: p.coords.latitude, lng: p.coords.longitude }), () => setMsg(t('w.map.geoError')), { enableHighAccuracy: true, timeout: 10000 });
   }
   return (<div className="stack">
-    <div className="row"><div style={{ flex: 1, minWidth: 220 }}><input placeholder="ابحث عن عنوان أو حي أو معلم…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} /></div>
-      <button type="button" className="btn" onClick={search} disabled={busy}>{busy ? <Spinner /> : 'بحث'}</button><button type="button" className="btn" onClick={here}>موقعي الحالي</button></div>
-    {found.length > 0 && <div className="row">{found.map((r) => <button key={r.place_id} type="button" className="pill" onClick={() => { fly({ lat: +r.lat, lng: +r.lon }); onPlace?.(String(r.display_name).split(',').slice(0, 3).join('،')); setFound([]); }}>{String(r.display_name).split(',').slice(0, 3).join('،')}</button>)}</div>}
+    <div className="row"><div style={{ flex: 1, minWidth: 220 }}><input placeholder={t('w.map.searchPh')} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} /></div>
+      <button type="button" className="btn" onClick={search} disabled={busy}>{busy ? <Spinner /> : t('w.map.search')}</button><button type="button" className="btn" onClick={here}>{t('w.map.here')}</button></div>
+    {found.length > 0 && <div className="row">{found.map((r) => <button key={r.place_id} type="button" className="pill" onClick={() => { fly({ lat: +r.lat, lng: +r.lon }); onPlace?.(String(r.display_name).split(',').slice(0, 3).join(sep)); setFound([]); }}>{String(r.display_name).split(',').slice(0, 3).join(sep)}</button>)}</div>}
     {msg && <div className="muted small">{msg}</div>}
     <div ref={el} className="map" />
-    <div className="muted small">{value ? '✓ تم تحديد الموقع — اسحب الدبوس أو اضغط مكاناً آخر لتعديله. الدائرة هي النطاق المسموح بالحضور منه.' : 'اضغط على الخريطة لتحديد موقع الفرع.'}</div>
+    <div className="muted small">{value ? t('w.map.selected') : t('w.map.pick')}</div>
   </div>);
 }

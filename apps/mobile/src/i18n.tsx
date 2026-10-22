@@ -14,7 +14,6 @@ export function MobileI18nProvider({ children }: { children: React.ReactNode }) 
         return isLocale(v) ? v : null;
       }}
       save={async (l) => { await SecureStore.setItemAsync(KEY, l); }}
-      onChange={() => { /* RTL change requires reload; keep layout direction-driven */ }}
     >
       {children}
     </SharedProvider>

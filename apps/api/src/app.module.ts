@@ -16,8 +16,6 @@ import { SetupController, SetupService } from './setup/setup.controller';
 import { ExcuseRequestsController, ExcuseRequestsService } from './excuse-requests/excuse-requests.controller';
 import { DevicesController, DevicesService } from './devices/devices.controller';
 import { TasksController, TasksService } from './tasks/tasks.controller';
-import { LicenseController } from './license/license.controller';
-import { LicenseService } from './license/license.service';
 import { AgentController } from './agent/agent.controller';
 import { AgentService } from './agent/agent.service';
 import { NotificationService } from './notifications/notification.service';
@@ -36,8 +34,8 @@ if (!secret || secret.length < 32) throw new Error('JWT_SECRET must be set (min 
 
 @Module({
   imports: [ScheduleModule.forRoot(), JwtModule.register({ secret, signOptions: { expiresIn: '15m' } })],
-  controllers: [AuthController, PoliciesController, AttendanceController, BranchesController, EmployeesController, HolidaysController, LeavesController, ReportsController, SetupController, ExcuseRequestsController, DevicesController, TasksController, AgentController, WhatsappController, LicenseController],
-  providers: [PrismaService, PoliciesService, AttendanceService, AuthService, BranchesService, EmployeesService, HolidaysService, LeavesService, ReportsService, MailService, SetupService, ExcuseRequestsService, DevicesService, TasksService, LicenseService, AgentService, NotificationService, RemindersService, WhatsappService, WhatsappAdminService,
+  controllers: [AuthController, PoliciesController, AttendanceController, BranchesController, EmployeesController, HolidaysController, LeavesController, ReportsController, SetupController, ExcuseRequestsController, DevicesController, TasksController, AgentController, WhatsappController],
+  providers: [PrismaService, PoliciesService, AttendanceService, AuthService, BranchesService, EmployeesService, HolidaysService, LeavesService, ReportsService, MailService, SetupService, ExcuseRequestsService, DevicesService, TasksService, AgentService, NotificationService, RemindersService, WhatsappService, WhatsappAdminService,
     { provide: OtpSender, useClass: EmailOtpSender },
     { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
