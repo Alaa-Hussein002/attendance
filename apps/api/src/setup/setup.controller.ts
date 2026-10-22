@@ -80,5 +80,8 @@ export class SetupService {
 export class SetupController {
   constructor(private svc: SetupService) {}
   @Get('meta') meta() { return this.svc.meta(); }
+  @Get('health') health() {
+    return { ok: true, service: 'attendance-api', time: new Date().toISOString(), uptime: Math.round(process.uptime()) };
+  }
   @Post('setup/start') start(@Ip() ip: string, @Body() b: any) { return this.svc.start(ip, b); }
 }

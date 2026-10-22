@@ -1,14 +1,27 @@
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS deps
 WORKDIR /app
-COPY package*.json ./
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy only the workspace manifests first so Docker can cache the install layer.
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/i18n/package.json ./packages/i18n/
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+RUN npm ci --workspaces --include=dev
+
 COPY packages ./packages
 COPY apps/api ./apps/api
-RUN npm install --workspaces --if-present --omit=dev 2>/dev/null; npm install -w @attendance/api --omit=dev
 
-FROM node:20-alpine
+# Prisma's client must match the schema at image build time.
+RUN npx prisma generate --schema apps/api/prisma/schema.prisma
+
+FROM node:20-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=base /app /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=deps /app /app
 WORKDIR /app/apps/api
 EXPOSE 3000
-CMD ["npx", "ts-node", "src/main.ts"]
+CMD ["npm", "run", "start:prod"]

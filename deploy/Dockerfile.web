@@ -1,14 +1,29 @@
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS builder
 WORKDIR /app
-COPY package*.json ./
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/i18n/package.json ./packages/i18n/
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+RUN npm ci --workspaces --include=dev
+
 COPY packages ./packages
 COPY apps/web ./apps/web
-RUN npm install -w @attendance/web --omit=dev
 
-FROM node:20-alpine
+# NEXT_PUBLIC_* values are compiled into the client bundle.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+RUN npm run build -w @attendance/web
+
+FROM node:20-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=base /app /app
+ENV PORT=3001
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app /app
 WORKDIR /app/apps/web
 EXPOSE 3001
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start:prod"]
