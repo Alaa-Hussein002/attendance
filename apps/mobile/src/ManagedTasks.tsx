@@ -38,7 +38,10 @@ const validDate = (value: string) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+const minutesOf = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
 const locationNumber = (value: string, min: number, max: number) => value.trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= min && Number(value) <= max;
+const matches = (name: string, query: string) => !query.trim() || name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+type Place = { place_id: number; display_name: string; lat: string; lon: string };
 
 export default function ManagedTasks() {
   const { t, dir, locale } = useI18n();
@@ -49,6 +52,9 @@ export default function ManagedTasks() {
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [staffSearch, setStaffSearch] = useState('');
   const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [placeResults, setPlaceResults] = useState<Place[]>([]);
+  const [placeBusy, setPlaceBusy] = useState(false);
   const [form, setForm] = useState<TaskForm>(blank());
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -61,8 +67,8 @@ export default function ManagedTasks() {
     const total = today.y * 12 + today.m - 1 + monthOffset;
     return { y: Math.floor(total / 12), m: total % 12 + 1 };
   }, [meta, monthOffset]);
-  const employeeOptions = useMemo(() => staff.filter((person) => !staffSearch.trim() || person.name.includes(staffSearch.trim())), [staff, staffSearch]);
-  const assignableOptions = useMemo(() => staff.filter((person) => !form.assigneeIds.includes(person.id) && (!assigneeSearch.trim() || person.name.includes(assigneeSearch.trim()))), [staff, form.assigneeIds, assigneeSearch]);
+  const employeeOptions = useMemo(() => staff.filter((person) => person.id === selectedEmployee || matches(person.name, staffSearch)), [staff, staffSearch, selectedEmployee]);
+  const assignableOptions = useMemo(() => staff.filter((person) => !form.assigneeIds.includes(person.id) && matches(person.name, assigneeSearch)), [staff, form.assigneeIds, assigneeSearch]);
 
   const load = useCallback(async () => {
     if (!month) return;
@@ -98,6 +104,8 @@ export default function ManagedTasks() {
 
   const beginEdit = (task?: Task) => {
     setAssigneeSearch('');
+    setPlaceQuery('');
+    setPlaceResults([]);
     setForm(task ? {
       id: task.id, title: task.title, details: task.details ?? '', address: task.address ?? '', date: task.date,
       startTime: task.startTime, endTime: task.endTime, latitude: String(task.latitude), longitude: String(task.longitude),
@@ -105,7 +113,7 @@ export default function ManagedTasks() {
     } : blank(meta?.today ?? ''));
     setEditing(true);
   };
-  const cancelEdit = () => { setEditing(false); setForm(blank()); };
+  const cancelEdit = () => { setEditing(false); setForm(blank()); setPlaceQuery(''); setPlaceResults([]); };
 
   const valid = form.title.trim().length > 0 && validDate(form.date) && validTime(form.startTime) && validTime(form.endTime) &&
     form.endTime > form.startTime && locationNumber(form.latitude, -90, 90) && locationNumber(form.longitude, -180, 180) &&
@@ -119,9 +127,48 @@ export default function ManagedTasks() {
         return;
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setForm((current) => ({ ...current, latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) }));
+      const { latitude, longitude } = position.coords;
+      setPlaceResults([]);
+      setForm((current) => ({ ...current, latitude: String(latitude), longitude: String(longitude) }));
+      // Fill the readable address as well, like the map picker on the website.
+      try {
+        const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const label = place && [place.name, place.street, place.district, place.city, place.region, place.country].filter(Boolean).join(t('m.common.listSep'));
+        if (label) setForm((current) => ({ ...current, address: current.address || label }));
+      } catch { /* coordinates are enough when the device has no reverse geocoder */ }
     } catch (error) {
       toast('error', t('m.mt.locError'), msg(error instanceof ApiError ? error.code : '', t));
+    }
+  };
+
+  const choosePlace = (place: Place) => {
+    const latitude = Number(place.lat);
+    const longitude = Number(place.lon);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    const label = String(place.display_name ?? '').split(',').slice(0, 3).join(t('m.common.listSep')).trim();
+    setForm((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6), address: current.address || label }));
+    setPlaceQuery('');
+    setPlaceResults([]);
+  };
+
+  const searchPlace = async () => {
+    const query = placeQuery.trim();
+    if (!query || placeBusy) return;
+    setPlaceBusy(true);
+    setPlaceResults([]);
+    try {
+      // Same OpenStreetMap search as the website's MapPicker.
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=${locale}&q=${encodeURIComponent(query)}`, {
+        headers: { 'User-Agent': 'BaytAlMosawer-Mobile/1.0', Accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP_${response.status}`);
+      const found = await response.json();
+      if (!Array.isArray(found) || found.length === 0) { toast('info', t('m.mt.noPlace')); return; }
+      setPlaceResults(found);
+    } catch {
+      toast('error', t('m.mt.placeError'));
+    } finally {
+      setPlaceBusy(false);
     }
   };
 
@@ -169,7 +216,7 @@ export default function ManagedTasks() {
   const textInput = { height: 46, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: R.md, paddingHorizontal: 12, color: C.black, textAlign: dir === 'rtl' ? 'right' as const : 'left' as const, writingDirection: dir === 'rtl' ? 'rtl' as const : 'ltr' as const };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.paper }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 18, paddingBottom: 130, gap: 14 }}
+    <ScrollView style={{ flex: 1, backgroundColor: C.paper }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 18, paddingBottom: 130, gap: 14 }} keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}>
       <View style={{ flexDirection: row, alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <View style={{ flex: 1 }}><T style={{ fontSize: 26, fontWeight: '800' }}>{t('m.mt.title')}</T><T style={{ color: C.muted, fontSize: 13, lineHeight: 20 }}>{t('m.mt.sub')}</T></View>
@@ -186,6 +233,7 @@ export default function ManagedTasks() {
           <View style={{ flex: 1 }}><Field label={t('m.mt.to')} ltr value={form.endTime} onChangeText={(endTime) => setForm((current) => ({ ...current, endTime }))} placeholder="17:00" keyboardType="numbers-and-punctuation" /></View>
         </View>
         {validDate(form.date) && validTime(form.startTime) && validTime(form.endTime) && form.endTime <= form.startTime && <T style={{ color: C.bad, fontSize: 12 }}>{t('m.mt.endAfterStart')}</T>}
+        {validTime(form.startTime) && validTime(form.endTime) && <T style={{ color: C.muted, fontSize: 11 }}>{hhmm12(minutesOf(form.startTime), locale)} – {hhmm12(minutesOf(form.endTime), locale)}</T>}
         <Field label={t('m.mt.details')} value={form.details} onChangeText={(details) => setForm((current) => ({ ...current, details }))} placeholder={t('m.mt.detailsPh')} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: 'top', paddingTop: 12 }} />
         <View style={{ gap: 8 }}>
           <T style={{ color: C.muted, fontSize: 13 }}>{t('m.mt.assignees', { n: form.assigneeIds.length })}</T>
@@ -203,6 +251,23 @@ export default function ManagedTasks() {
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: row, alignItems: 'center', justifyContent: 'space-between' }}><T style={{ color: C.muted, fontSize: 13 }}>{t('m.mt.location')}</T>
             <Pressable onPress={useCurrentLocation} style={{ flexDirection: row, alignItems: 'center', gap: 5 }}><Ionicons name="navigate-outline" size={16} color={C.accent} /><T style={{ color: C.accent, fontWeight: '700', fontSize: 12 }}>{t('m.mt.current')}</T></Pressable></View>
+          <View style={{ gap: 6 }}>
+            <T style={{ color: C.muted, fontSize: 13 }}>{t('m.mt.searchPlace')}</T>
+            <View style={{ flexDirection: row, gap: 8 }}>
+              <TextInput value={placeQuery} onChangeText={setPlaceQuery} onSubmitEditing={searchPlace} returnKeyType="search" placeholder={t('m.mt.searchPlacePh')} placeholderTextColor="#aaa79d" style={{ ...textInput, flex: 1 }} />
+              <Pressable disabled={placeBusy} onPress={searchPlace} accessibilityRole="button" accessibilityLabel={t('m.mt.searchPlaceBtn')} style={{ minWidth: 64, paddingHorizontal: 12, borderRadius: R.md, backgroundColor: C.black, alignItems: 'center', justifyContent: 'center', opacity: placeBusy ? 0.55 : 1 }}>
+                {placeBusy ? <ActivityIndicator color={C.paper} size="small" /> : <T style={{ color: C.paper, fontWeight: '700', fontSize: 13 }}>{t('m.mt.searchPlaceBtn')}</T>}
+              </Pressable>
+            </View>
+            {placeResults.length > 0 && <T style={{ color: C.muted, fontSize: 11 }}>{t('m.mt.placeHint')}</T>}
+            {placeResults.map((place) => (
+              <Pressable key={place.place_id} onPress={() => choosePlace(place)} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.soft, borderRadius: R.md, paddingHorizontal: 11, paddingVertical: 9 }}>
+                <Ionicons name="location-outline" size={15} color={C.info} />
+                <T style={{ flex: 1, fontSize: 13 }} numberOfLines={2}>{String(place.display_name).split(',').slice(0, 3).join(t('m.common.listSep'))}</T>
+              </Pressable>
+            ))}
+            <T style={{ color: '#aaa79d', fontSize: 10 }}>{t('m.mt.mapAttribution')}</T>
+          </View>
           <View style={{ flexDirection: row, gap: 8 }}>
             <View style={{ flex: 1 }}><Field label={t('m.mt.lat')} ltr value={form.latitude} onChangeText={(value) => setLocation('latitude', value)} keyboardType="decimal-pad" placeholder="24.7136" /></View>
             <View style={{ flex: 1 }}><Field label={t('m.mt.lng')} ltr value={form.longitude} onChangeText={(value) => setLocation('longitude', value)} keyboardType="decimal-pad" placeholder="46.6753" /></View>
@@ -211,6 +276,13 @@ export default function ManagedTasks() {
             <Ionicons name="map-outline" size={16} color={C.info} /><T style={{ color: C.info, fontSize: 12 }}>{t('m.mt.viewMap')}</T></Pressable>}
           <Field label={t('m.mt.address')} value={form.address} onChangeText={(address) => setForm((current) => ({ ...current, address }))} />
           <Field label={t('m.mt.radius')} ltr value={form.radius} onChangeText={(radius) => setLocation('radius', radius)} keyboardType="number-pad" />
+          <View style={{ flexDirection: row, flexWrap: 'wrap', gap: 6 }}>
+            {[50, 100, 150, 250, 500, 1000].map((value) => (
+              <Pressable key={value} onPress={() => setLocation('radius', String(value))} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, backgroundColor: Number(form.radius) === value ? C.black : C.soft }}>
+                <T style={{ color: Number(form.radius) === value ? C.paper : C.black, fontSize: 12, fontWeight: '600' }}>{value}</T>
+              </Pressable>
+            ))}
+          </View>
         </View>
         <View style={{ backgroundColor: C.soft, padding: 12, borderRadius: R.md, flexDirection: row, gap: 8 }}>
           <Ionicons name="information-circle-outline" size={18} color={C.info} /><T style={{ flex: 1, color: C.muted, fontSize: 12, lineHeight: 19 }}>{t('m.mt.note')}</T>

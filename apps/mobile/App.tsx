@@ -28,17 +28,19 @@ const TABS: [TabKey, string, IonName, IonName][] = [
   ['requests', 'm.tab.requests', 'paper-plane-outline', 'paper-plane'],
   ['profile', 'm.tab.profile', 'person-outline', 'person'],
 ];
+/** Keep in sync with TASK_ROLES in apps/api/src/common/http.ts and the web /tasks area. */
+const TASK_ROLES = ['TEAM_LEAD', 'HR', 'COMPANY_ADMIN', 'SUPER_ADMIN'];
 
 function Main({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
   const { t, dir } = useI18n();
   const insets = useSafeAreaInsets(); const [tab, setTab] = useState<TabKey>('home');
-  const teamLead = user.role === 'TEAM_LEAD';
-  const tabs: [TabKey, string, IonName, IonName][] = TABS.map(([key, label, off, on]) => [key, key === 'tasks' && teamLead ? 'm.tab.tasksBookings' : label, off, on]);
+  const canManageTasks = TASK_ROLES.includes(user.role);
+  const tabs: [TabKey, string, IonName, IonName][] = TABS.map(([key, label, off, on]) => [key, key === 'tasks' && canManageTasks ? 'm.tab.tasksBookings' : label, off, on]);
   return (
     <View style={{ flex: 1, backgroundColor: C.paper }}>
       <View style={{ flex: 1 }}>
         {tab === 'home' && <Home name={user.name} userId={user.id} onExpired={onLogout} go={setTab} />}
-        {tab === 'tasks' && (teamLead ? <ManagedTasks /> : <Tasks userId={user.id} />)}
+        {tab === 'tasks' && (canManageTasks ? <ManagedTasks /> : <Tasks userId={user.id} />)}
         {tab === 'records' && <Records />}
         {tab === 'requests' && <Requests />}
         {tab === 'profile' && <Profile user={user} onLogout={onLogout} />}
